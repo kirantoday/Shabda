@@ -1,0 +1,42 @@
+# Build output
+build/
+
+# IDE / Visual Studio
+.vs/
+*.vcxproj.user
+*.suo
+*.sdf
+*.opensdf
+*.db
+*.opendb
+*.ipch
+out/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# Compiled objects
+*.obj
+*.o
+*.lib
+*.dll
+*.exe
+*.exp
+*.pdb
+*.ilk
+
+# JUCE
+JuceLibraryCode/
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary / diagnostic files (project convention)
+_tmp_*
+
+# Claude Code
+.claude/plans/
