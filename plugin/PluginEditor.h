@@ -60,6 +60,9 @@ private:
     juce::Label bendRangeLabel;
     juce::ComboBox tuningCombo;
     juce::Label tuningLabel;
+    juce::ToggleButton legatoToggle;
+    juce::ComboBox glideCurveCombo;
+    juce::Label glideCurveLabel;
 
     // --- Level meter ---
     juce::Label levelLabel;

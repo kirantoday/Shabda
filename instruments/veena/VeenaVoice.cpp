@@ -1,75 +1,142 @@
 #include "instruments/veena/VeenaVoice.h"
 #include "instruments/veena/VeenaConfig.h"
+#include <algorithm>
 
 namespace veena {
 
-void VeenaVoice::prepare(float sampleRate, int maxBlockSize)
+void VeenaVoice::prepare(float newSampleRate, int maxBlockSize)
 {
-    string.prepare(sampleRate, maxBlockSize);
+    sampleRate = newSampleRate;
 
-    // Apply veena default parameters.
-    string.setPluckPosition(DEFAULT_PLUCK_POSITION);
-    string.setDamping(DEFAULT_DAMPING);
-    string.setBrightness(DEFAULT_BRIGHTNESS);
-    string.setPluckStrength(DEFAULT_PLUCK_STRENGTH);
+    // Prepare all voices.
+    for (auto& voice : voices)
+    {
+        voice.string.prepare(sampleRate, maxBlockSize);
+        voice.string.setPluckPosition(DEFAULT_PLUCK_POSITION);
+        voice.string.setDamping(DEFAULT_DAMPING);
+        voice.string.setBrightness(DEFAULT_BRIGHTNESS);
+        voice.string.setPluckStrength(DEFAULT_PLUCK_STRENGTH);
+        voice.glideEngine.prepare(sampleRate);
+        voice.glideEngine.setCurve(DEFAULT_GLIDE_CURVE);
+        voice.midiNote = -1;
+    }
+
     baseBrightness = DEFAULT_BRIGHTNESS;
 
-    // Configure pitch bend engine with veena defaults.
     pitchBendEngine.prepare(sampleRate, maxBlockSize);
     pitchBendEngine.setBendRangeSemitones(DEFAULT_BEND_RANGE_SEMITONES);
     pitchBendEngine.setCurve(DEFAULT_BEND_CURVE);
     pitchBendEngine.setSmoothingTimeMs(DEFAULT_BEND_SMOOTHING_MS);
 
-    // Configure MIDI CC mapper.
     midiMapper.prepare(sampleRate);
     midiMapper.setMaxVibratoDepth(DEFAULT_MAX_VIBRATO_DEPTH);
 
-    // Configure vibrato LFO (kampita).
     vibratoLFO.prepare(sampleRate);
     vibratoLFO.setRate(DEFAULT_VIBRATO_RATE);
 
-    // Configure body resonance with veena kudam preset.
     bodyResonator.prepare(sampleRate, maxBlockSize);
     bodyResonator.setPreset(VEENA_BODY_MODES, VEENA_BODY_NUM_MODES);
     bodyResonator.setDryWetMix(DEFAULT_BODY_MIX);
 
-    // Configure sympathetic drone strings with veena thalam tuning.
     sympatheticBank.prepare(sampleRate, maxBlockSize);
     sympatheticBank.setTunings(THALAM_STRING_NOTES, NUM_THALAM_STRINGS);
     sympatheticBank.setGain(DEFAULT_SYMPATHETIC_GAIN);
     sympatheticBank.setFeedback(DEFAULT_SYMPATHETIC_FEEDBACK);
     sympatheticBank.setDamping(DEFAULT_SYMPATHETIC_DAMPING);
 
+    legatoEnabled = DEFAULT_LEGATO_ENABLED;
+    glideTimeMs = DEFAULT_LEGATO_GLIDE_MS;
+    legatoGapThresholdSamples = sampleRate * LEGATO_GAP_THRESHOLD_MS / 1000.0f;
     aftertouchBrightnessRange = DEFAULT_AFTERTOUCH_BRIGHTNESS_RANGE;
     outputGain = OUTPUT_GAIN;
     lastMidiNote = -1;
+    lastVoiceIndex = -1;
+    lastNoteOnSample = 0;
+    sampleCounter = 0;
 }
 
 void VeenaVoice::reset()
 {
-    string.reset();
+    for (auto& voice : voices)
+    {
+        voice.string.reset();
+        voice.glideEngine.reset();
+        voice.midiNote = -1;
+    }
     pitchBendEngine.reset();
     midiMapper.reset();
     vibratoLFO.reset();
     bodyResonator.reset();
     sympatheticBank.reset();
     lastMidiNote = -1;
+    lastVoiceIndex = -1;
+    sampleCounter = 0;
+    lastNoteOnSample = 0;
 }
 
 void VeenaVoice::noteOn(int midiNote, float velocity)
 {
-    lastMidiNote = midiNote;
-    pitchBendEngine.snapToCurrentValue();
-    string.noteOn(midiNote, velocity);
+    float targetNote = static_cast<float>(midiNote);
+    int64_t samplesSinceLastNote = sampleCounter - lastNoteOnSample;
+    float gapMs = static_cast<float>(samplesSinceLastNote) * 1000.0f / sampleRate;
+
+    // Decide: legato glide or retrigger pluck?
+    bool shouldGlide = legatoEnabled
+                       && lastVoiceIndex >= 0
+                       && voices[static_cast<size_t>(lastVoiceIndex)].string.isActive()
+                       && velocity < RETRIGGER_VELOCITY_THRESHOLD
+                       && gapMs < LEGATO_GAP_THRESHOLD_MS;
+
+    lastNoteOnSample = sampleCounter;
+
+    if (shouldGlide)
+    {
+        // LEGATO: glide the most recent voice to the new note.
+        auto& voice = voices[static_cast<size_t>(lastVoiceIndex)];
+        voice.glideEngine.setGlide(voice.glideEngine.getCurrentNote(), targetNote, glideTimeMs);
+        voice.midiNote = midiNote;
+        lastMidiNote = midiNote;
+    }
+    else
+    {
+        // RETRIGGER: allocate a voice and pluck.
+        int vi = findFreeVoice();
+        if (vi < 0)
+            vi = findOldestVoice();
+
+        auto& voice = voices[static_cast<size_t>(vi)];
+        voice.excitedBaseNote = targetNote;
+        voice.glideEngine.snapTo(targetNote);
+        voice.midiNote = midiNote;
+        voice.noteOnSample = sampleCounter;
+
+        pitchBendEngine.snapToCurrentValue();
+        voice.string.noteOn(midiNote, velocity);
+
+        lastMidiNote = midiNote;
+        lastVoiceIndex = vi;
+    }
 }
 
 void VeenaVoice::noteOff(int midiNote)
 {
-    if (midiNote == lastMidiNote)
+    // Release all voices playing this note.
+    // We mark the voice as available for reallocation (midiNote = -1)
+    // but DO NOT reset lastVoiceIndex — the string is still ringing
+    // and should remain available for legato glide if the next note
+    // arrives within the gap window.
+    for (int i = 0; i < NUM_VOICES; ++i)
     {
-        string.noteOff();
-        lastMidiNote = -1;
+        if (voices[static_cast<size_t>(i)].midiNote == midiNote)
+        {
+            voices[static_cast<size_t>(i)].string.noteOff();
+            voices[static_cast<size_t>(i)].midiNote = -1;
+        }
     }
+
+    // Note: lastMidiNote and lastVoiceIndex are intentionally NOT cleared
+    // here. They remain valid for legato until either (a) the gap timer
+    // expires, or (b) the string fully decays (isActive() returns false).
 }
 
 void VeenaVoice::pitchBendMidi(int midiValue)
@@ -94,52 +161,69 @@ void VeenaVoice::handleAftertouch(int value)
 
 void VeenaVoice::processBlock(float* outputBuffer, int numSamples)
 {
+    // Clear output — we'll sum voices into it.
+    std::fill(outputBuffer, outputBuffer + numSamples, 0.0f);
+
     for (int i = 0; i < numSamples; ++i)
     {
-        // --- Per-sample modulation ---
-
-        // Pitch: combine pitch bend (meend) + vibrato LFO (kampita).
-        float pitchOffset = pitchBendEngine.getNextPitchOffset();
-
-        // Update vibrato depth from CC1 (smoothed by MidiMapper).
+        // --- Shared per-sample modulation ---
+        float pitchBendOffset = pitchBendEngine.getNextPitchOffset();
         vibratoLFO.setDepth(midiMapper.getVibratoDepth());
-        pitchOffset += vibratoLFO.getNextSample();
-
-        string.setPitchOffset(pitchOffset);
-
-        // Expression gain from CC11 (smoothed).
+        float vibratoOffset = vibratoLFO.getNextSample();
         float expressionGain = midiMapper.getExpressionGain();
 
-        // Aftertouch → brightness modulation.
         float aftertouch = midiMapper.getAftertouchValue();
         float modulatedBrightness = baseBrightness + aftertouch * aftertouchBrightnessRange;
-        string.setBrightness(modulatedBrightness);
 
-        // Render one sample.
-        outputBuffer[i] = string.processSample() * outputGain * expressionGain;
+        // --- Render each voice ---
+        float voiceSum = 0.0f;
+
+        for (int v = 0; v < NUM_VOICES; ++v)
+        {
+            auto& voice = voices[static_cast<size_t>(v)];
+
+            if (!voice.string.isActive())
+                continue;
+
+            // Per-voice glide + shared pitch bend + vibrato
+            float glideNote = voice.glideEngine.getNextNote();
+            float glideOffset = glideNote - voice.excitedBaseNote;
+            float totalPitch = glideOffset + pitchBendOffset + vibratoOffset;
+
+            voice.string.setPitchOffset(totalPitch);
+            voice.string.setBrightness(modulatedBrightness);
+
+            voiceSum += voice.string.processSample();
+        }
+
+        outputBuffer[i] = voiceSum * outputGain * expressionGain;
+        ++sampleCounter;
     }
 
-    // Body resonance: warm, woody kudam character.
+    // Shared post-processing: body resonance and sympathetic drones.
     bodyResonator.processBlock(outputBuffer, numSamples);
-
-    // Sympathetic resonance: shimmering drone halo.
     sympatheticBank.processBlock(outputBuffer, numSamples);
 }
 
+// --- Parameter setters ---
+
 void VeenaVoice::setPluckPosition(float position)
 {
-    string.setPluckPosition(position);
+    for (auto& voice : voices)
+        voice.string.setPluckPosition(position);
 }
 
 void VeenaVoice::setDamping(float damping)
 {
-    string.setDamping(damping);
+    for (auto& voice : voices)
+        voice.string.setDamping(damping);
 }
 
 void VeenaVoice::setBrightness(float brightness)
 {
     baseBrightness = brightness;
-    string.setBrightness(brightness);
+    for (auto& voice : voices)
+        voice.string.setBrightness(brightness);
 }
 
 void VeenaVoice::setBendRange(float semitones)
@@ -169,14 +253,62 @@ void VeenaVoice::setSympatheticGain(float gain)
 
 void VeenaVoice::setVibratoDepth(float semitones)
 {
-    vibratoLFO.setDepth(semitones);
+    midiMapper.setVibratoDirect(semitones);
 }
 
 void VeenaVoice::setExpressionGain(float gain)
 {
-    // Direct expression gain — bypasses MidiMapper smoothing.
-    // Used by UI slider.
-    midiMapper.handleControlChange(11, static_cast<int>(gain * 127.0f));
+    midiMapper.setExpressionDirect(gain);
+}
+
+void VeenaVoice::setLegatoEnabled(bool enabled)
+{
+    legatoEnabled = enabled;
+}
+
+void VeenaVoice::setGlideCurve(engine::GlideCurve curve)
+{
+    for (auto& voice : voices)
+        voice.glideEngine.setCurve(curve);
+}
+
+// --- Voice allocation ---
+
+int VeenaVoice::findFreeVoice() const
+{
+    for (int i = 0; i < NUM_VOICES; ++i)
+    {
+        if (!voices[static_cast<size_t>(i)].string.isActive()
+            && voices[static_cast<size_t>(i)].midiNote == -1)
+            return i;
+    }
+    return -1;
+}
+
+int VeenaVoice::findOldestVoice() const
+{
+    int oldest = 0;
+    int64_t oldestSample = voices[0].noteOnSample;
+
+    for (int i = 1; i < NUM_VOICES; ++i)
+    {
+        if (voices[static_cast<size_t>(i)].noteOnSample < oldestSample)
+        {
+            oldest = i;
+            oldestSample = voices[static_cast<size_t>(i)].noteOnSample;
+        }
+    }
+    return oldest;
+}
+
+int VeenaVoice::findVoiceForNote(int midiNote) const
+{
+    for (int i = 0; i < NUM_VOICES; ++i)
+    {
+        if (voices[static_cast<size_t>(i)].midiNote == midiNote)
+            return i;
+    }
+    return -1;
 }
 
 } // namespace veena

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "expression/PitchBendEngine.h"
+#include "expression/GlideEngine.h"
 #include "resonator/ModalFilter.h"
 
 // Configuration constants for the Saraswati Veena.
@@ -126,5 +127,40 @@ constexpr float DEFAULT_MAX_VIBRATO_DEPTH = 1.0f;
 // TODO(TUNE): aftertouch brightness modulation range.
 // At full aftertouch (127), brightness increases by this amount (0..1 scale).
 constexpr float DEFAULT_AFTERTOUCH_BRIGHTNESS_RANGE = 0.3f;
+
+// --- Legato / glide ---
+
+// Legato enabled by default — veena music is highly legato.
+constexpr bool DEFAULT_LEGATO_ENABLED = true;
+
+// TODO(TUNE): glide time in ms — how long the pitch takes to slide
+// from the old note to the new note during legato transitions.
+// 80ms feels natural for moderate-speed phrases. Faster = more abrupt.
+constexpr float DEFAULT_LEGATO_GLIDE_MS = 80.0f;
+
+// TODO(TUNE): velocity threshold for retrigger during legato.
+// If velocity exceeds this (0..1), the pluck is retriggered even in legato mode.
+// This allows a real MIDI keyboard player to force a new pluck by playing hard.
+//
+// Set to 1.01 (above max) for now because JUCE's QWERTY keyboard sends
+// notes at velocity 1.0, which would otherwise prevent legato from ever
+// engaging. When testing with a real velocity-sensitive MIDI controller,
+// lower this to ~0.9 to enable the velocity-based retrigger feature.
+constexpr float RETRIGGER_VELOCITY_THRESHOLD = 1.01f;
+
+// TODO(TUNE): maximum gap in ms between notes for legato to engage.
+// If more than this time passes since the last noteOn, the next note
+// retriggers (the player paused, so it's a new phrase).
+constexpr float LEGATO_GAP_THRESHOLD_MS = 200.0f;
+
+// Default glide curve shape for legato meend transitions.
+// Exponential is the classic veena feel — fast departure, slow arrival.
+constexpr engine::GlideCurve DEFAULT_GLIDE_CURVE = engine::GlideCurve::Exponential;
+
+// --- Polyphony ---
+
+// Maximum simultaneous voices. 2 enables double-stop techniques.
+// EXTENSION: increase to 4 for full main string polyphony.
+constexpr int MAX_VOICES = 2;
 
 } // namespace veena

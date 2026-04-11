@@ -46,6 +46,10 @@ public:
     // TODO(TUNE): 1.0 semitone is moderate kampita depth
     void setMaxVibratoDepth(float semitones);
 
+    // Direct setters for UI sliders (bypass CC int conversion).
+    void setExpressionDirect(float gain);  // 0..1
+    void setVibratoDirect(float depth);    // in semitones
+
 private:
     ParameterSmoother vibratoSmoother;     // CC1 → vibrato depth
     ParameterSmoother expressionSmoother;  // CC11 → volume

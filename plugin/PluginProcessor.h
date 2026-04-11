@@ -58,6 +58,8 @@ public:
     // Settings
     std::atomic<float> uiBendRange { 7.0f };         // 1..12 semitones
     std::atomic<int>   uiTuningOffset { 0 };         // semitones from C3 (0=C, 2=D, etc.)
+    std::atomic<bool>  uiLegatoEnabled { true };     // legato glide on/off
+    std::atomic<int>   uiGlideCurve { 1 };           // 0=Linear, 1=Exponential, 2=SCurve, 3=Late
 
     // Peak level for the meter (written by audio thread, read by editor)
     std::atomic<float> peakLevel { 0.0f };

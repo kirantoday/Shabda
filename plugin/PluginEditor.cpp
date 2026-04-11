@@ -79,7 +79,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     addAndMakeVisible(sympatheticLabel);
 
     // --- Expression controls ---
-    setupGroupLabel(exprGroupLabel, "Expression");
+    setupGroupLabel(exprGroupLabel, "Performance");
     addAndMakeVisible(exprGroupLabel);
 
     setupSlider(pitchBendSlider, -1.0, 1.0, 0.0, 0.001);
@@ -121,6 +121,26 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     tuningCombo.setSelectedId(1, juce::dontSendNotification);  // C3 default
     tuningCombo.addListener(this);
     addAndMakeVisible(tuningCombo);
+
+    legatoToggle.setButtonText("Legato");
+    legatoToggle.setToggleState(true, juce::dontSendNotification);
+    legatoToggle.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffaaaaaa));
+    legatoToggle.setColour(juce::ToggleButton::tickColourId, juce::Colour(0xff44cc66));
+    legatoToggle.onClick = [this]()
+    {
+        processorRef.uiLegatoEnabled.store(legatoToggle.getToggleState(), std::memory_order_relaxed);
+    };
+    addAndMakeVisible(legatoToggle);
+
+    setupValueLabel(glideCurveLabel, "Glide:");
+    addAndMakeVisible(glideCurveLabel);
+    glideCurveCombo.addItem("Linear", 1);
+    glideCurveCombo.addItem("Exponential", 2);
+    glideCurveCombo.addItem("S-Curve", 3);
+    glideCurveCombo.addItem("Late", 4);
+    glideCurveCombo.setSelectedId(2, juce::dontSendNotification);  // Exponential default
+    glideCurveCombo.addListener(this);
+    addAndMakeVisible(glideCurveCombo);
 
     // --- Level meter label ---
     setupValueLabel(levelLabel, "Level: ----");
@@ -207,9 +227,13 @@ void VeenaPluginEditor::resized()
     sympatheticLabel.setBounds(leftCol.removeFromTop(16));
     sympatheticSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
 
-    // --- Right column: Expression + Settings ---
+    // --- Right column: Performance + Settings ---
 
     exprGroupLabel.setBounds(rightCol.removeFromTop(groupH));
+
+    expressionLabel.setBounds(rightCol.removeFromTop(16));
+    expressionSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
+    rightCol.removeFromTop(2);
 
     pitchBendLabel.setBounds(rightCol.removeFromTop(16));
     pitchBendSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
@@ -217,22 +241,25 @@ void VeenaPluginEditor::resized()
 
     vibratoLabel.setBounds(rightCol.removeFromTop(16));
     vibratoSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
-    rightCol.removeFromTop(2);
-
-    expressionLabel.setBounds(rightCol.removeFromTop(16));
-    expressionSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
     rightCol.removeFromTop(8);
 
     settingsGroupLabel.setBounds(rightCol.removeFromTop(groupH));
 
-    auto settingsRow = rightCol.removeFromTop(26);
-    bendRangeLabel.setBounds(settingsRow.removeFromLeft(80));
-    bendRangeCombo.setBounds(settingsRow.removeFromLeft(80));
-    settingsRow.removeFromLeft(10);
-    tuningLabel.setBounds(settingsRow.removeFromLeft(75));
-    tuningCombo.setBounds(settingsRow.removeFromLeft(100));
+    auto settingsRow1 = rightCol.removeFromTop(26);
+    bendRangeLabel.setBounds(settingsRow1.removeFromLeft(80));
+    bendRangeCombo.setBounds(settingsRow1.removeFromLeft(80));
+    settingsRow1.removeFromLeft(10);
+    tuningLabel.setBounds(settingsRow1.removeFromLeft(75));
+    tuningCombo.setBounds(settingsRow1.removeFromLeft(100));
 
-    rightCol.removeFromTop(8);
+    rightCol.removeFromTop(4);
+    auto settingsRow2 = rightCol.removeFromTop(24);
+    legatoToggle.setBounds(settingsRow2.removeFromLeft(80));
+    settingsRow2.removeFromLeft(10);
+    glideCurveLabel.setBounds(settingsRow2.removeFromLeft(40));
+    glideCurveCombo.setBounds(settingsRow2.removeFromLeft(110));
+
+    rightCol.removeFromTop(4);
     levelLabel.setBounds(rightCol.removeFromTop(16));
 }
 
@@ -290,7 +317,14 @@ void VeenaPluginEditor::sliderValueChanged(juce::Slider* slider)
 void VeenaPluginEditor::sliderDragEnded(juce::Slider* slider)
 {
     if (slider == &pitchBendSlider)
-        pitchBendSlider.setValue(0.0, juce::sendNotificationSync);
+    {
+        // Spring back to center — but use dontSendNotification so the
+        // slider visual resets without immediately zeroing the atomic.
+        // The audio thread's PitchBendEngine smoother will glide the
+        // pitch back smoothly over ~100ms instead of snapping.
+        pitchBendSlider.setValue(0.0, juce::dontSendNotification);
+        processorRef.uiPitchBend.store(0.0f, std::memory_order_relaxed);
+    }
 }
 
 void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
@@ -302,11 +336,16 @@ void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
     }
     else if (combo == &tuningCombo)
     {
-        int offset = tuningCombo.getSelectedId() - 1;  // 0=C, 1=C#, 2=D, ...
+        int offset = tuningCombo.getSelectedId() - 1;
         processorRef.uiTuningOffset.store(offset, std::memory_order_relaxed);
-        // Shift the keyboard display to start from the selected Sa note.
-        int baseNote = 48 + offset;  // C3 + offset
+        int baseNote = 48 + offset;
         keyboardComponent.setAvailableRange(baseNote, baseNote + 48);
+    }
+    else if (combo == &glideCurveCombo)
+    {
+        // Combo IDs are 1-based; GlideCurve enum is 0-based.
+        int curveId = glideCurveCombo.getSelectedId() - 1;
+        processorRef.uiGlideCurve.store(curveId, std::memory_order_relaxed);
     }
 }
 
@@ -321,5 +360,17 @@ void VeenaPluginEditor::timerCallback()
         ? static_cast<int>(20.0f * std::log10(currentPeak))
         : -60;
     levelLabel.setText("Level: " + juce::String(db) + " dB", juce::dontSendNotification);
-    repaint();  // Trigger meter bar redraw
+
+    // Update pitch bend label to reflect spring-back (slider resets visually
+    // on release, but we need the label to update too).
+    float bendVal = static_cast<float>(pitchBendSlider.getValue());
+    float bendSt = bendVal * processorRef.getBendRangeSemitones();
+    juce::String bendText = "Pitch Bend: ";
+    if (bendSt >= 0.0f) bendText += "+";
+    bendText += juce::String(bendSt, 1) + " st";
+    pitchBendLabel.setText(bendText, juce::dontSendNotification);
+
+    // Only repaint the meter bar area, not the entire editor.
+    auto meterArea = levelLabel.getBounds().translated(0, 18).withHeight(8).expanded(4, 4);
+    repaint(meterArea);
 }

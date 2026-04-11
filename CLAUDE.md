@@ -140,11 +140,13 @@ The DSP engine has ZERO dependency on JUCE. Only `/plugin` and `/ui` layers depe
 - [x] Simple level meter or string vibration indicator
 - [x] Functional, not pretty — aesthetics come later
 
-### Phase 2: Expressivity & Polish (future)
-- [ ] Behavioral modeling: automatic legato, gamaka curve profiles, attack variation
+### Phase 2: Expressivity & Polish (in progress)
+- [x] Automatic legato (smooth pitch glide between notes without replucking)
+- [x] Meend curve profiles (Linear, Exponential, S-Curve, Late) with GlideEngine
+- [x] Polyphonic mode (2 voices for double-stop techniques, voice stealing)
+- [ ] Attack variation
 - [ ] Thalam (side drone) strings with independent trigger
 - [ ] Multi-voice: 4 main strings playable independently or via keyswitch
-- [ ] Polyphonic mode (at minimum 2 voices for double-stop techniques)
 - [ ] IR convolution body resonance option (hybrid with modal filters)
 - [ ] Raga-aware presets: Shankarabharanam, Kalyani, Todi, Bhairavi, etc.
 

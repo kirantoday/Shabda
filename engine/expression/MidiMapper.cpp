@@ -68,4 +68,14 @@ void MidiMapper::setMaxVibratoDepth(float semitones)
     maxVibratoDepth = semitones;
 }
 
+void MidiMapper::setExpressionDirect(float gain)
+{
+    expressionSmoother.setTarget(gain);
+}
+
+void MidiMapper::setVibratoDirect(float depth)
+{
+    vibratoSmoother.setTarget(depth);
+}
+
 } // namespace engine
