@@ -63,6 +63,15 @@ public:
     void setExpressionGain(float gain);
     void setLegatoEnabled(bool enabled);
     void setGlideCurve(engine::GlideCurve curve);
+    void setThalamVolume(float volume);
+
+    // Thalam (side drone) string trigger — independent from main voices.
+    // midiNote determines which thalam string is plucked.
+    void thalamNoteOn(int midiNote, float velocity);
+    void thalamNoteOff(int midiNote);
+
+    // Returns true if this MIDI note is a thalam trigger note.
+    static bool isThalamNote(int midiNote);
 
 private:
     // --- Per-voice state ---
@@ -100,6 +109,11 @@ private:
     int64_t sampleCounter = 0;
     float legatoGapThresholdSamples = 9600.0f;
     float glideTimeMs = 80.0f;
+
+    // --- Thalam (side drone) plucked strings ---
+    static constexpr int NUM_THALAM = 3;
+    std::array<engine::PluckedString, NUM_THALAM> thalamStrings;
+    float thalamVolume = 0.6f;
 
     float sampleRate = 48000.0f;
     float outputGain = 0.7f;

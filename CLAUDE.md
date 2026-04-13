@@ -144,8 +144,8 @@ The DSP engine has ZERO dependency on JUCE. Only `/plugin` and `/ui` layers depe
 - [x] Automatic legato (smooth pitch glide between notes without replucking)
 - [x] Meend curve profiles (Linear, Exponential, S-Curve, Late) with GlideEngine
 - [x] Polyphonic mode (2 voices for double-stop techniques, voice stealing)
-- [ ] Attack variation
-- [ ] Thalam (side drone) strings with independent trigger
+- [x] Humanization (pitch/brightness/timing jitter per pluck)
+- [x] Thalam (side drone) strings with independent trigger (Z/X/C keys)
 - [ ] Multi-voice: 4 main strings playable independently or via keyswitch
 - [ ] IR convolution body resonance option (hybrid with modal filters)
 - [ ] Raga-aware presets: Shankarabharanam, Kalyani, Todi, Bhairavi, etc.

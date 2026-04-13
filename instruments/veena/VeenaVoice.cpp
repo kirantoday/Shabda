@@ -1,6 +1,7 @@
 #include "instruments/veena/VeenaVoice.h"
 #include "instruments/veena/VeenaConfig.h"
 #include <algorithm>
+#include <algorithm>
 
 namespace veena {
 
@@ -44,6 +45,16 @@ void VeenaVoice::prepare(float newSampleRate, int maxBlockSize)
     sympatheticBank.setFeedback(DEFAULT_SYMPATHETIC_FEEDBACK);
     sympatheticBank.setDamping(DEFAULT_SYMPATHETIC_DAMPING);
 
+    // Configure thalam (side drone) plucked strings.
+    for (int i = 0; i < NUM_THALAM; ++i)
+    {
+        thalamStrings[static_cast<size_t>(i)].prepare(sampleRate, maxBlockSize);
+        thalamStrings[static_cast<size_t>(i)].setDamping(THALAM_DAMPING);
+        thalamStrings[static_cast<size_t>(i)].setBrightness(THALAM_BRIGHTNESS);
+        thalamStrings[static_cast<size_t>(i)].setPluckPosition(THALAM_PLUCK_POSITION);
+    }
+    thalamVolume = DEFAULT_THALAM_VOLUME;
+
     legatoEnabled = DEFAULT_LEGATO_ENABLED;
     glideTimeMs = DEFAULT_LEGATO_GLIDE_MS;
     legatoGapThresholdSamples = sampleRate * LEGATO_GAP_THRESHOLD_MS / 1000.0f;
@@ -63,6 +74,8 @@ void VeenaVoice::reset()
         voice.glideEngine.reset();
         voice.midiNote = -1;
     }
+    for (auto& ts : thalamStrings)
+        ts.reset();
     pitchBendEngine.reset();
     midiMapper.reset();
     vibratoLFO.reset();
@@ -232,7 +245,15 @@ void VeenaVoice::processBlock(float* outputBuffer, int numSamples)
             voiceSum += voice.string.processSample();
         }
 
-        outputBuffer[i] = voiceSum * outputGain * expressionGain;
+        // Add thalam strings (no pitch modulation — they're open strings).
+        float thalamSum = 0.0f;
+        for (int t = 0; t < NUM_THALAM; ++t)
+        {
+            if (thalamStrings[static_cast<size_t>(t)].isActive())
+                thalamSum += thalamStrings[static_cast<size_t>(t)].processSample();
+        }
+
+        outputBuffer[i] = (voiceSum * outputGain + thalamSum * thalamVolume) * expressionGain;
         ++sampleCounter;
     }
 
@@ -306,6 +327,51 @@ void VeenaVoice::setGlideCurve(engine::GlideCurve curve)
 {
     for (auto& voice : voices)
         voice.glideEngine.setCurve(curve);
+}
+
+// --- Thalam strings ---
+
+void VeenaVoice::thalamNoteOn(int midiNote, float velocity)
+{
+    // Find which thalam string this note triggers.
+    for (int i = 0; i < NUM_THALAM; ++i)
+    {
+        if (THALAM_TRIGGER_NOTES[i] == midiNote)
+        {
+            // Pluck at the fixed thalam tuning note, not the trigger note
+            // (they happen to be the same in default config, but this
+            // allows remapping triggers independently of tuning).
+            thalamStrings[static_cast<size_t>(i)].noteOn(THALAM_STRING_NOTES[i], velocity);
+            return;
+        }
+    }
+}
+
+void VeenaVoice::thalamNoteOff(int midiNote)
+{
+    for (int i = 0; i < NUM_THALAM; ++i)
+    {
+        if (THALAM_TRIGGER_NOTES[i] == midiNote)
+        {
+            thalamStrings[static_cast<size_t>(i)].noteOff();
+            return;
+        }
+    }
+}
+
+bool VeenaVoice::isThalamNote(int midiNote)
+{
+    for (int i = 0; i < NUM_THALAM_PLUCKED; ++i)
+    {
+        if (THALAM_TRIGGER_NOTES[i] == midiNote)
+            return true;
+    }
+    return false;
+}
+
+void VeenaVoice::setThalamVolume(float volume)
+{
+    thalamVolume = std::clamp(volume, 0.0f, 1.0f);
 }
 
 // --- Voice allocation ---

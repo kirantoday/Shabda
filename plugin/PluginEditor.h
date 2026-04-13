@@ -23,6 +23,8 @@ private:
     void sliderDragEnded(juce::Slider* slider) override;
     void comboBoxChanged(juce::ComboBox* combo) override;
     void timerCallback() override;
+    bool keyPressed(const juce::KeyPress& key) override;
+    bool keyStateChanged(bool isKeyDown) override;
 
     VeenaPluginProcessor& processorRef;
 
@@ -44,6 +46,15 @@ private:
     juce::Label bodyMixLabel;
     juce::Slider sympatheticSlider;
     juce::Label sympatheticLabel;
+
+    // --- Thalam ---
+    juce::Label thalamGroupLabel;
+    juce::Slider thalamVolumeSlider;
+    juce::Label thalamVolumeLabel;
+    juce::Label thalamHintLabel;
+
+    // Track Z/X/C key states for thalam noteOn/noteOff.
+    bool thalamKeyState[3] = { false, false, false };
 
     // --- Expression controls ---
     juce::Label exprGroupLabel;

@@ -78,6 +78,19 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     setupValueLabel(sympatheticLabel, "Sympathetic: 0.15");
     addAndMakeVisible(sympatheticLabel);
 
+    // --- Thalam ---
+    setupGroupLabel(thalamGroupLabel, "Thalam (Z/X/C)");
+    addAndMakeVisible(thalamGroupLabel);
+
+    setupSlider(thalamVolumeSlider, 0.0, 1.0, 0.6);
+    thalamVolumeSlider.addListener(this);
+    addAndMakeVisible(thalamVolumeSlider);
+    setupValueLabel(thalamVolumeLabel, "Volume: 0.60");
+    addAndMakeVisible(thalamVolumeLabel);
+
+    setupValueLabel(thalamHintLabel, "Z=Sa  X=Pa  C=sa");
+    addAndMakeVisible(thalamHintLabel);
+
     // --- Expression controls ---
     setupGroupLabel(exprGroupLabel, "Performance");
     addAndMakeVisible(exprGroupLabel);
@@ -151,7 +164,8 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     keyboardComponent.setAvailableRange(36, 96);
     addAndMakeVisible(keyboardComponent);
 
-    setSize(780, 530);
+    setSize(780, 600);
+    setWantsKeyboardFocus(true);
 
     // Start timer for level meter updates (30 fps).
     startTimerHz(30);
@@ -226,6 +240,13 @@ void VeenaPluginEditor::resized()
 
     sympatheticLabel.setBounds(leftCol.removeFromTop(16));
     sympatheticSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
+    leftCol.removeFromTop(8);
+
+    thalamGroupLabel.setBounds(leftCol.removeFromTop(groupH));
+    thalamVolumeLabel.setBounds(leftCol.removeFromTop(16));
+    thalamVolumeSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
+    leftCol.removeFromTop(2);
+    thalamHintLabel.setBounds(leftCol.removeFromTop(14));
 
     // --- Right column: Performance + Settings ---
 
@@ -312,6 +333,11 @@ void VeenaPluginEditor::sliderValueChanged(juce::Slider* slider)
         expressionLabel.setText("Expression: " + juce::String(static_cast<int>(val * 100)) + "%",
                                 juce::dontSendNotification);
     }
+    else if (slider == &thalamVolumeSlider)
+    {
+        processorRef.uiThalamVolume.store(val, std::memory_order_relaxed);
+        thalamVolumeLabel.setText("Volume: " + juce::String(val, 2), juce::dontSendNotification);
+    }
 }
 
 void VeenaPluginEditor::sliderDragEnded(juce::Slider* slider)
@@ -347,6 +373,49 @@ void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
         int curveId = glideCurveCombo.getSelectedId() - 1;
         processorRef.uiGlideCurve.store(curveId, std::memory_order_relaxed);
     }
+}
+
+bool VeenaPluginEditor::keyPressed(const juce::KeyPress& key)
+{
+    // Map Z/X/C to thalam string MIDI notes 36/38/40.
+    // These are below the main keyboard range and are intercepted here
+    // because JUCE's MidiKeyboardComponent doesn't map Z/X/C.
+    char c = static_cast<char>(key.getTextCharacter());
+    int thalamIndex = -1;
+
+    if (c == 'z' || c == 'Z') thalamIndex = 0;
+    else if (c == 'x' || c == 'X') thalamIndex = 1;
+    else if (c == 'c' || c == 'C') thalamIndex = 2;
+
+    if (thalamIndex >= 0 && !thalamKeyState[thalamIndex])
+    {
+        thalamKeyState[thalamIndex] = true;
+        // Inject a MIDI noteOn into the keyboard state so the processor sees it.
+        int midiNote = 36 + thalamIndex * 2;  // 36, 38, 40
+        processorRef.keyboardState.noteOn(1, midiNote, 0.8f);
+        return true;
+    }
+
+    return false;  // let MidiKeyboardComponent handle other keys
+}
+
+bool VeenaPluginEditor::keyStateChanged(bool /*isKeyDown*/)
+{
+    // Check if Z/X/C keys were released (keyStateChanged is called on
+    // both press and release, but doesn't tell us which key — we poll).
+    const char keys[] = { 'Z', 'X', 'C' };
+    const int notes[] = { 36, 38, 40 };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        bool isDown = juce::KeyPress::isKeyCurrentlyDown(keys[i]);
+        if (thalamKeyState[i] && !isDown)
+        {
+            thalamKeyState[i] = false;
+            processorRef.keyboardState.noteOff(1, notes[i], 0.0f);
+        }
+    }
+    return false;
 }
 
 void VeenaPluginEditor::timerCallback()

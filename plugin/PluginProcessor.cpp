@@ -69,9 +69,21 @@ void VeenaPluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
         auto msg = metadata.getMessage();
 
         if (msg.isNoteOn())
-            veenaVoice.noteOn(msg.getNoteNumber(), msg.getFloatVelocity());
+        {
+            int note = msg.getNoteNumber();
+            if (veena::VeenaVoice::isThalamNote(note))
+                veenaVoice.thalamNoteOn(note, msg.getFloatVelocity());
+            else
+                veenaVoice.noteOn(note, msg.getFloatVelocity());
+        }
         else if (msg.isNoteOff())
-            veenaVoice.noteOff(msg.getNoteNumber());
+        {
+            int note = msg.getNoteNumber();
+            if (veena::VeenaVoice::isThalamNote(note))
+                veenaVoice.thalamNoteOff(note);
+            else
+                veenaVoice.noteOff(note);
+        }
         else if (msg.isPitchWheel())
             veenaVoice.pitchBendMidi(msg.getPitchWheelValue());
         else if (msg.isController())
@@ -95,6 +107,7 @@ void VeenaPluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     // Body & resonance
     veenaVoice.setBodyMix(uiBodyMix.load(std::memory_order_relaxed));
     veenaVoice.setSympatheticGain(uiSympathetic.load(std::memory_order_relaxed));
+    veenaVoice.setThalamVolume(uiThalamVolume.load(std::memory_order_relaxed));
 
     // Settings
     veenaVoice.setBendRange(uiBendRange.load(std::memory_order_relaxed));

@@ -54,6 +54,7 @@ public:
     // Body & resonance
     std::atomic<float> uiBodyMix { 0.5f };           // 0..1
     std::atomic<float> uiSympathetic { 0.15f };      // 0..0.5
+    std::atomic<float> uiThalamVolume { 0.6f };      // 0..1
 
     // Settings
     std::atomic<float> uiBendRange { 7.0f };         // 1..12 semitones

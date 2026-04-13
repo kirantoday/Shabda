@@ -180,4 +180,27 @@ constexpr float HUMANIZE_BRIGHTNESS_FRACTION = 0.10f;
 // ±5ms shifts when the pluck actually fires. Adds groove.
 constexpr float HUMANIZE_TIMING_MS = 5.0f;
 
+// --- Thalam (side drone) plucked strings ---
+// The veena has 3 side strings plucked openly for rhythmic punctuation.
+// They use the same PluckedString engine but with different characteristics:
+// higher damping (shorter decay), brighter attack, no legato.
+
+// MIDI notes that trigger thalam strings (below main playing range).
+// Z=36, X=38, C=40 on QWERTY (mapped in the editor, not by MidiKeyboardComponent).
+constexpr int THALAM_TRIGGER_NOTES[] = { 36, 38, 40 };
+constexpr int NUM_THALAM_PLUCKED = 3;
+
+// TODO(TUNE): thalam string damping — shorter decay than main strings.
+// 0.65 gives a punchy rhythmic pluck that dies within ~1 second.
+constexpr float THALAM_DAMPING = 0.65f;
+
+// TODO(TUNE): thalam brightness — bright, percussive attack.
+constexpr float THALAM_BRIGHTNESS = 0.8f;
+
+// TODO(TUNE): thalam pluck position — near bridge for sharp attack.
+constexpr float THALAM_PLUCK_POSITION = 0.1f;
+
+// TODO(TUNE): thalam volume relative to main strings.
+constexpr float DEFAULT_THALAM_VOLUME = 0.6f;
+
 } // namespace veena
