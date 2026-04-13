@@ -276,126 +276,127 @@ void VeenaPluginEditor::resized()
 {
     auto area = getLocalBounds();
     int pad = theme::dim::padding;
+    int knobSize = theme::dim::knobSize;
+    int knobRow = knobSize + 28;
 
     // --- Header ---
     auto header = area.removeFromTop(theme::dim::headerHeight);
     logoLabel->setBounds(header.removeFromLeft(130).reduced(pad, 2));
-
-    // Preset selector on the right
     auto presetArea = header.removeFromRight(200).reduced(4, 6);
     presetPrev.setBounds(presetArea.removeFromLeft(24));
     presetNext.setBounds(presetArea.removeFromRight(24));
     presetCombo.setBounds(presetArea.reduced(2, 0));
-
     instrumentLabel->setBounds(header.reduced(10, 4));
 
-    // --- Keyboard at bottom — full width, no horizontal padding ---
+    // --- Keyboard at bottom (full width) ---
     keyboardComponent.setBounds(area.removeFromBottom(theme::dim::keyboardHeight).reduced(0, 2));
 
-    // --- Visualization ---
-    visualization.setBounds(area.removeFromTop(theme::dim::vizHeight).reduced(pad, 4));
+    // --- Main body: 3 columns ---
+    // LEFT (140px): String controls
+    // CENTER (remaining): Instrument visualization + expression row at bottom
+    // RIGHT (160px): Resonance + settings
+    auto body = area.reduced(pad, 4);
+    int leftW = 140;
+    int rightW = 160;
 
-    // --- Controls area (3 columns) ---
-    auto controls = area.reduced(pad, 2);
-    int colWidth = controls.getWidth() / 3;
-    auto leftCol = controls.removeFromLeft(colWidth);
-    auto midCol = controls.removeFromLeft(colWidth);
-    auto rightCol = controls;
+    auto leftCol = body.removeFromLeft(leftW);
+    auto rightCol = body.removeFromRight(rightW);
+    auto centerCol = body;  // remaining width
 
-    int knobSize = theme::dim::knobSize;
-    int knobRow = knobSize + 30;  // knob + label + value
-
-    // --- Left column: STRING knobs ---
+    // =============================================
+    // LEFT COLUMN: STRING controls (stacked knobs)
+    // =============================================
     stringGroupLabel->setBounds(leftCol.removeFromTop(18));
-    leftCol.removeFromTop(4);
+    leftCol.removeFromTop(6);
 
     auto pluckArea = leftCol.removeFromTop(knobRow);
     pluckPositionKnob.setBounds(pluckArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    pluckPosLabel->setBounds(pluckArea.removeFromTop(14));
-    pluckPosValue->setBounds(pluckArea.removeFromTop(14));
+    pluckPosLabel->setBounds(pluckArea.removeFromTop(13));
+    pluckPosValue->setBounds(pluckArea.removeFromTop(13));
 
+    leftCol.removeFromTop(4);
     auto dampArea = leftCol.removeFromTop(knobRow);
     dampingKnob.setBounds(dampArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    dampingLabel->setBounds(dampArea.removeFromTop(14));
-    dampingValue->setBounds(dampArea.removeFromTop(14));
+    dampingLabel->setBounds(dampArea.removeFromTop(13));
+    dampingValue->setBounds(dampArea.removeFromTop(13));
 
+    leftCol.removeFromTop(4);
     auto brightArea = leftCol.removeFromTop(knobRow);
     brightnessKnob.setBounds(brightArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    brightnessLabel->setBounds(brightArea.removeFromTop(14));
-    brightnessValue->setBounds(brightArea.removeFromTop(14));
+    brightnessLabel->setBounds(brightArea.removeFromTop(13));
+    brightnessValue->setBounds(brightArea.removeFromTop(13));
 
-    // --- Middle column: EXPRESSION ---
-    exprGroupLabel->setBounds(midCol.removeFromTop(18));
-    midCol.removeFromTop(4);
-
-    // Pitch bend strip, vibrato knob, expression strip — side by side
-    auto exprRow = midCol.removeFromTop(theme::dim::stripHeight + 30);
-    int stripW = theme::dim::stripWidth;
-    int exprColW = exprRow.getWidth() / 3;
-
-    auto bendCol = exprRow.removeFromLeft(exprColW);
-    pitchBendStrip.setBounds(bendCol.removeFromTop(theme::dim::stripHeight).withSizeKeepingCentre(stripW, theme::dim::stripHeight));
-    pitchBendLabel->setBounds(bendCol.removeFromTop(14));
-    pitchBendValue->setBounds(bendCol.removeFromTop(14));
-
-    auto vibCol = exprRow.removeFromLeft(exprColW);
-    vibratoKnob.setBounds(vibCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    vibCol.removeFromTop(theme::dim::stripHeight - knobSize);  // align with strips
-    vibratoLabel->setBounds(vibCol.removeFromTop(14));
-    vibratoValue->setBounds(vibCol.removeFromTop(14));
-
-    auto exprCol = exprRow;
-    expressionStrip.setBounds(exprCol.removeFromTop(theme::dim::stripHeight).withSizeKeepingCentre(stripW, theme::dim::stripHeight));
-    expressionLabel->setBounds(exprCol.removeFromTop(14));
-    expressionValue->setBounds(exprCol.removeFromTop(14));
-
-    // --- Right column: RESONANCE knobs + SETTINGS combos ---
+    // =============================================
+    // RIGHT COLUMN: Resonance knobs + Settings
+    // =============================================
     resonGroupLabel->setBounds(rightCol.removeFromTop(18));
+    rightCol.removeFromTop(6);
+
+    auto bodyArea = rightCol.removeFromTop(knobRow);
+    bodyMixKnob.setBounds(bodyArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    bodyMixLabel->setBounds(bodyArea.removeFromTop(13));
+    bodyMixValue->setBounds(bodyArea.removeFromTop(13));
+
+    rightCol.removeFromTop(4);
+    auto sympArea = rightCol.removeFromTop(knobRow);
+    sympatheticKnob.setBounds(sympArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    sympatheticLabel->setBounds(sympArea.removeFromTop(13));
+    sympatheticValue->setBounds(sympArea.removeFromTop(13));
+
+    rightCol.removeFromTop(4);
+    auto thalArea = rightCol.removeFromTop(knobRow);
+    thalamKnob.setBounds(thalArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    thalamLabel->setBounds(thalArea.removeFromTop(13));
+    thalamValue->setBounds(thalArea.removeFromTop(13));
+
+    rightCol.removeFromTop(10);
+    settingsGroupLabel->setBounds(rightCol.removeFromTop(16));
     rightCol.removeFromTop(4);
 
-    // 3 knobs in a row
-    auto knobRowArea = rightCol.removeFromTop(knobRow);
-    int rknobW = knobRowArea.getWidth() / 3;
-
-    auto bodyCol = knobRowArea.removeFromLeft(rknobW);
-    bodyMixKnob.setBounds(bodyCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    bodyMixLabel->setBounds(bodyCol.removeFromTop(14));
-    bodyMixValue->setBounds(bodyCol.removeFromTop(14));
-
-    auto sympCol = knobRowArea.removeFromLeft(rknobW);
-    sympatheticKnob.setBounds(sympCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    sympatheticLabel->setBounds(sympCol.removeFromTop(14));
-    sympatheticValue->setBounds(sympCol.removeFromTop(14));
-
-    auto thalCol = knobRowArea;
-    thalamKnob.setBounds(thalCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
-    thalamLabel->setBounds(thalCol.removeFromTop(14));
-    thalamValue->setBounds(thalCol.removeFromTop(14));
-
-    rightCol.removeFromTop(6);
-    settingsGroupLabel->setBounds(rightCol.removeFromTop(16));
-    rightCol.removeFromTop(2);
-
-    // Settings combos: 2 per row
-    int comboW = (rightCol.getWidth() - 8) / 2;
     int comboH = theme::dim::comboHeight;
 
-    auto srow1 = rightCol.removeFromTop(comboH + 2);
-    bodyModeCombo.setBounds(srow1.removeFromLeft(comboW));
-    srow1.removeFromLeft(8);
-    ragaCombo.setBounds(srow1.removeFromLeft(comboW));
-
+    bodyModeCombo.setBounds(rightCol.removeFromTop(comboH).reduced(2, 0));
     rightCol.removeFromTop(3);
-    auto srow2 = rightCol.removeFromTop(comboH + 2);
-    tuningCombo.setBounds(srow2.removeFromLeft(comboW));
-    srow2.removeFromLeft(8);
-    bendRangeCombo.setBounds(srow2.removeFromLeft(comboW));
-
+    ragaCombo.setBounds(rightCol.removeFromTop(comboH).reduced(2, 0));
     rightCol.removeFromTop(3);
-    auto srow3 = rightCol.removeFromTop(comboH + 2);
-    glideCurveCombo.setBounds(srow3.removeFromLeft(comboW));
-    srow3.removeFromLeft(8);
-    legatoToggle.setBounds(srow3);
+    tuningCombo.setBounds(rightCol.removeFromTop(comboH).reduced(2, 0));
+    rightCol.removeFromTop(3);
+    bendRangeCombo.setBounds(rightCol.removeFromTop(comboH).reduced(2, 0));
+    rightCol.removeFromTop(3);
+    glideCurveCombo.setBounds(rightCol.removeFromTop(comboH).reduced(2, 0));
+    rightCol.removeFromTop(5);
+    legatoToggle.setBounds(rightCol.removeFromTop(comboH + 2).reduced(2, 0));
+
+    // =============================================
+    // CENTER COLUMN: Instrument (tall) + Expression row (bottom)
+    // =============================================
+
+    // Expression row at the bottom of center column (short, ~70px)
+    int exprRowH = 80;
+    auto exprArea = centerCol.removeFromBottom(exprRowH);
+    exprGroupLabel->setBounds(exprArea.removeFromTop(16));
+    exprArea.removeFromTop(2);
+
+    int stripW = theme::dim::stripWidth;
+    int exprColW = exprArea.getWidth() / 3;
+
+    auto bendCol = exprArea.removeFromLeft(exprColW);
+    pitchBendStrip.setBounds(bendCol.removeFromTop(42).withSizeKeepingCentre(stripW, 42));
+    pitchBendLabel->setBounds(bendCol.removeFromTop(12));
+    pitchBendValue->setBounds(bendCol.removeFromTop(12));
+
+    auto vibCol = exprArea.removeFromLeft(exprColW);
+    vibratoKnob.setBounds(vibCol.removeFromTop(42).withSizeKeepingCentre(42, 42));
+    vibratoLabel->setBounds(vibCol.removeFromTop(12));
+    vibratoValue->setBounds(vibCol.removeFromTop(12));
+
+    auto exprCol = exprArea;
+    expressionStrip.setBounds(exprCol.removeFromTop(42).withSizeKeepingCentre(stripW, 42));
+    expressionLabel->setBounds(exprCol.removeFromTop(12));
+    expressionValue->setBounds(exprCol.removeFromTop(12));
+
+    // Instrument visualization fills the rest of center column (tall!)
+    visualization.setBounds(centerCol.reduced(4, 2));
 }
 
 // --- Slider callbacks ---

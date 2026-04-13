@@ -55,8 +55,8 @@ namespace color {
 // --- Dimensions ---
 
 namespace dim {
-    constexpr int windowWidth      = 900;
-    constexpr int windowHeight     = 650;
+    constexpr int windowWidth      = 940;
+    constexpr int windowHeight     = 720;
     constexpr int minWidth         = 700;
     constexpr int minHeight        = 500;
 
