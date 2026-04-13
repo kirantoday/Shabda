@@ -36,7 +36,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     logoLabel = std::unique_ptr<juce::Label>(makeLabel("SHABDA", 24.0f,
                                                         theme::color::gold, juce::Justification::centredLeft));
     logoLabel->setFont(juce::FontOptions(24.0f, juce::Font::bold));
-    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Saraswati Veena", theme::font::subtitle,
+    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Veena", theme::font::subtitle,
                                                               theme::color::textSecondary, juce::Justification::centred));
     addAndMakeVisible(*logoLabel);
     addAndMakeVisible(*instrumentLabel);
@@ -219,11 +219,11 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     // --- Keyboard ---
     keyboardComponent.setKeyPressBaseOctave(5);
     keyboardComponent.setAvailableRange(36, 96);
-    // Individual cream white keys with thin dark gaps, dark black keys, gold highlights
+    // Cream white keys with visible dark separators, dark black keys, gold highlights
     keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffEDE4D4));  // warm cream
     keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff2A2A3E));  // dark navy
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff8A8070));  // visible dark gap
-    keyboardComponent.setKeyWidth(13.0f);
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff4A4540));  // dark border between white keys
+    keyboardComponent.setKeyWidth(12.0f);  // slightly smaller for more keys visible
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff8B7D5A));  // muted gold on cream
@@ -289,8 +289,8 @@ void VeenaPluginEditor::resized()
 
     instrumentLabel->setBounds(header.reduced(10, 4));
 
-    // --- Keyboard at bottom ---
-    keyboardComponent.setBounds(area.removeFromBottom(theme::dim::keyboardHeight).reduced(pad, 2));
+    // --- Keyboard at bottom — full width, no horizontal padding ---
+    keyboardComponent.setBounds(area.removeFromBottom(theme::dim::keyboardHeight).reduced(0, 2));
 
     // --- Visualization ---
     visualization.setBounds(area.removeFromTop(theme::dim::vizHeight).reduced(pad, 4));

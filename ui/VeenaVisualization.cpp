@@ -48,11 +48,14 @@ void VeenaVisualization::paint(juce::Graphics& g)
     g.setColour(theme::color::panelBorder);
     g.drawRoundedRectangle(bounds.reduced(0.5f), static_cast<float>(theme::dim::panelRadius), 1.0f);
 
-    // Compute the veena's main axis: 30 degrees, yali upper-left, kudam lower-right.
-    // Leave margins so the instrument fits nicely.
-    float margin = 25.0f;
-    axisStart = { bounds.getX() + margin + 30, bounds.getY() + margin };          // yali
-    axisEnd   = { bounds.getRight() - margin - 20, bounds.getBottom() - margin };  // kudam
+    // Compute the veena's main axis: ~25 degrees, yali upper-left, kudam lower-right.
+    // Scale to ~70% of panel and center with breathing room.
+    float scaleX = bounds.getWidth() * 0.70f;
+    float scaleY = bounds.getHeight() * 0.65f;
+    float offsetX = bounds.getX() + (bounds.getWidth() - scaleX) * 0.5f;
+    float offsetY = bounds.getY() + (bounds.getHeight() - scaleY) * 0.5f;
+    axisStart = { offsetX, offsetY };                            // yali
+    axisEnd   = { offsetX + scaleX, offsetY + scaleY };          // kudam
     axisLength = axisStart.getDistanceFrom(axisEnd);
     axisAngle = std::atan2(axisEnd.y - axisStart.y, axisEnd.x - axisStart.x);
 
@@ -233,24 +236,24 @@ void VeenaVisualization::drawFrets(juce::Graphics& g)
 
         float halfW = 7.0f + t * 8.0f;  // match neck taper
 
+        // Draw fret as a short gold line across the neck width
+        auto top = veenaPoint(t, -halfW + 2);
+        auto bot = veenaPoint(t, halfW - 2);
+
         if (isActive)
         {
-            // Active fret: brighter, wider
-            auto top = veenaPoint(t, -halfW);
-            auto bot = veenaPoint(t, halfW);
-            g.setColour(theme::color::fretActive.withAlpha(0.6f));
-            g.drawLine(top.x, top.y, bot.x, bot.y, 1.5f);
+            g.setColour(theme::color::fretActive.withAlpha(0.7f));
+            g.drawLine(top.x, top.y, bot.x, bot.y, 2.0f);
 
             // Glow
-            g.setColour(theme::color::fretActive.withAlpha(0.1f));
-            g.drawLine(top.x, top.y, bot.x, bot.y, 6.0f);
+            g.setColour(theme::color::fretActive.withAlpha(0.12f));
+            g.drawLine(top.x, top.y, bot.x, bot.y, 7.0f);
         }
         else
         {
-            // Small gold dot on the neck centerline
-            auto pt = veenaPoint(t, 0);
-            g.setColour(theme::color::gold.withAlpha(0.25f));
-            g.fillEllipse(pt.x - 1.2f, pt.y - 1.2f, 2.4f, 2.4f);
+            // Visible brass fret line
+            g.setColour(theme::color::gold.withAlpha(0.35f));
+            g.drawLine(top.x, top.y, bot.x, bot.y, 0.8f);
         }
     }
 }
@@ -274,13 +277,14 @@ void VeenaVisualization::drawBridge(juce::Graphics& g)
 
 void VeenaVisualization::drawMainStrings(juce::Graphics& g)
 {
-    // 4 main strings along the neck, different thicknesses.
-    const float thickness[] = { 3.0f, 2.5f, 2.0f, 1.5f };
-    const float activeThick[] = { 3.8f, 3.0f, 2.5f, 2.0f };
+    // 4 main strings — the most prominent visual element.
+    // Clearly gold (#E8D5A3), different thicknesses.
+    const float thickness[] = { 2.8f, 2.3f, 1.8f, 1.4f };
+    const float activeThick[] = { 3.5f, 2.8f, 2.3f, 1.8f };
     const char* names[] = { "Sa", "Pa", "sa", "Pa" };
 
-    // Strings spread: perpendicular offsets from center axis
-    float stringSpread[] = { -5.0f, -1.7f, 1.7f, 5.0f };
+    // Strings spread wider for visibility
+    float stringSpread[] = { -6.0f, -2.0f, 2.0f, 6.0f };
 
     float stringStart = 0.04f;  // just past yali
     float stringEnd = 0.87f;    // at the bridge
@@ -330,20 +334,20 @@ void VeenaVisualization::drawMainStrings(juce::Graphics& g)
             g.strokePath(shadowPath, juce::PathStrokeType(thick + 0.5f));
         }
 
-        // String
+        // String — always clearly visible gold (#E8D5A3)
         juce::Colour col = isActive
-            ? theme::color::stringActive.withAlpha(0.85f + amp * 0.15f)
-            : theme::color::stringIdle.withAlpha(0.5f);
+            ? juce::Colour(0xffE8D5A3)  // bright gold when active
+            : juce::Colour(0xffE8D5A3).withAlpha(0.75f);  // still clearly gold when idle
         g.setColour(col);
         g.strokePath(stringPath, juce::PathStrokeType(thick));
 
-        // Glow
+        // Glow for active strings
         if (isActive && amp > 0.02f)
         {
-            g.setColour(theme::color::stringGlow.withAlpha(amp * 0.4f));
-            g.strokePath(stringPath, juce::PathStrokeType(thick + 4.0f));
-            g.setColour(theme::color::goldBright.withAlpha(amp * 0.1f));
-            g.strokePath(stringPath, juce::PathStrokeType(thick + 9.0f));
+            g.setColour(juce::Colour(0xffE8D5A3).withAlpha(amp * 0.5f));
+            g.strokePath(stringPath, juce::PathStrokeType(thick + 5.0f));
+            g.setColour(theme::color::goldBright.withAlpha(amp * 0.15f));
+            g.strokePath(stringPath, juce::PathStrokeType(thick + 10.0f));
         }
 
         // String name label near yali end
@@ -383,11 +387,11 @@ void VeenaVisualization::drawThalamStrings(juce::Graphics& g)
             g.drawLine(start.x, start.y, end.x, end.y, 5.0f);
         }
 
-        // Label
-        g.setColour(theme::color::gold.withAlpha(0.8f));
-        g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
-        g.drawText(labels[i], static_cast<int>(end.x) + 2, static_cast<int>(end.y) - 6,
-                   14, 12, juce::Justification::centredLeft, false);
+        // Label — bright gold, large, clearly readable
+        g.setColour(theme::color::goldBright);
+        g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
+        g.drawText(labels[i], static_cast<int>(end.x) + 3, static_cast<int>(end.y) - 7,
+                   18, 14, juce::Justification::centredLeft, false);
     }
 }
 
