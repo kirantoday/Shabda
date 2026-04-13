@@ -1,199 +1,183 @@
 #pragma once
 
-// Embedded SVG illustration of the Veena instrument.
-// Diagonal playing position: yali (upper-left) to kudam (lower-right).
-// Style: elegant vector art, gold and warm wood tones on transparent bg.
-//
-// Elements: yali (dragon head), upper gourd, tapered neck with 24 brass
-// frets, large kudam (gourd body), bridge, 4 main strings, 3 thalam strings.
+// Embedded SVG illustration of the Veena — VERTICAL orientation.
+// Yali at TOP, kudam at BOTTOM. Near-vertical (~10-15 deg tilt).
+// Strings run top-to-bottom as the most prominent visual element.
 //
 // The SVG is the STATIC base layer. Interactive overlays (string glow,
 // finger position, pluck flash) are drawn on top by VeenaVisualization.
 
 namespace veenaSVG {
 
-// Coordinate reference for overlays:
-// The SVG viewBox is 900x340.
-// Yali tip: approximately (65, 35)
-// Bridge: approximately (735, 245)
-// Kudam center: approximately (790, 260)
-// String start: ~(120, 60) to (120, 85) (4 strings spread vertically)
-// String end: ~(735, 238) to (735, 252)
-// Fret region: x from ~120 to ~720, spaced evenly
+// viewBox: tall and narrow to match vertical veena
+constexpr float viewBoxWidth  = 200.0f;
+constexpr float viewBoxHeight = 600.0f;
 
-constexpr float viewBoxWidth  = 900.0f;
-constexpr float viewBoxHeight = 340.0f;
+// String coordinates for overlay alignment.
+// Strings run from near yali (top) to bridge (bottom).
+// 4 strings spread horizontally, spaced ~10px apart.
+constexpr float stringTopY    = 95.0f;   // just below upper gourd
+constexpr float stringBottomY = 480.0f;  // at the bridge
+constexpr float stringX[4]    = { 85.0f, 93.0f, 101.0f, 109.0f };  // well-spaced
 
-// String Y positions at the start (yali end) and end (bridge) for overlay alignment
-constexpr float stringStartX = 120.0f;
-constexpr float stringEndX   = 735.0f;
-constexpr float stringStartY[4] = { 62.0f, 70.0f, 78.0f, 86.0f };
-constexpr float stringEndY[4]   = { 238.0f, 242.5f, 247.0f, 251.5f };
+// Fret region
+constexpr float fretTopY    = 100.0f;
+constexpr float fretBottomY = 475.0f;
 
-// Fret positions along X
-constexpr float fretStartX = 130.0f;
-constexpr float fretEndX   = 720.0f;
+// Kudam center
+constexpr float kudamCenterX = 100.0f;
+constexpr float kudamCenterY = 530.0f;
 
 inline const char* getSVG()
 {
     return R"SVG(
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 600">
   <defs>
-    <!-- Wood gradient for neck -->
-    <linearGradient id="neckWood" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="neckWood" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#3E2723"/>
       <stop offset="30%" stop-color="#4E342E"/>
-      <stop offset="60%" stop-color="#5D4037"/>
+      <stop offset="70%" stop-color="#5D4037"/>
       <stop offset="100%" stop-color="#4E342E"/>
     </linearGradient>
-    <!-- Wood gradient for kudam -->
     <radialGradient id="kudamWood" cx="45%" cy="40%" r="55%">
       <stop offset="0%" stop-color="#A0662B"/>
       <stop offset="50%" stop-color="#7B4B1E"/>
       <stop offset="100%" stop-color="#4E2C0A"/>
     </radialGradient>
-    <!-- Wood gradient for upper gourd -->
     <radialGradient id="gourdWood" cx="40%" cy="35%" r="55%">
       <stop offset="0%" stop-color="#8B6914"/>
       <stop offset="100%" stop-color="#5D4037"/>
     </radialGradient>
-    <!-- Gold gradient for yali -->
     <linearGradient id="yaliGold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#D4AF37"/>
       <stop offset="50%" stop-color="#C4A265"/>
       <stop offset="100%" stop-color="#8B7D4A"/>
     </linearGradient>
-    <!-- Brass gradient for bridge -->
-    <linearGradient id="brassGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+    <linearGradient id="brassGrad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#D4AF37"/>
       <stop offset="100%" stop-color="#A08030"/>
     </linearGradient>
-    <!-- Shadow -->
-    <filter id="dropShadow">
-      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.3"/>
+    <filter id="shadow">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
     </filter>
   </defs>
 
-  <!-- === NECK (tapered wooden beam) === -->
-  <path d="M 105,48  L 730,225  L 740,255  L 115,88  Z"
-        fill="url(#neckWood)" stroke="#6D4C41" stroke-width="0.8" filter="url(#dropShadow)"/>
-  <!-- Neck top highlight -->
-  <path d="M 107,49  L 732,226  L 730,230  L 107,53  Z"
-        fill="#FFFFFF" opacity="0.06"/>
-  <!-- Neck bottom shadow -->
-  <path d="M 115,84  L 740,251  L 740,255  L 115,88  Z"
-        fill="#000000" opacity="0.15"/>
-
-  <!-- === FRETS (24 brass bars across neck) === -->
-  <g stroke="#C4A265" opacity="0.45">
-    <line x1="145" y1="53" x2="149" y2="67" stroke-width="1.2"/>
-    <line x1="169" y1="57" x2="174" y2="72" stroke-width="1.2"/>
-    <line x1="193" y1="62" x2="198" y2="77" stroke-width="1.2"/>
-    <line x1="217" y1="67" x2="222" y2="82" stroke-width="1.2"/>
-    <line x1="241" y1="72" x2="247" y2="87" stroke-width="1.2"/>
-    <line x1="265" y1="77" x2="271" y2="92" stroke-width="1.2"/>
-    <line x1="289" y1="82" x2="296" y2="97" stroke-width="1.2"/>
-    <line x1="313" y1="87" x2="320" y2="102" stroke-width="1.2"/>
-    <line x1="337" y1="92" x2="345" y2="108" stroke-width="1.2"/>
-    <line x1="361" y1="97" x2="369" y2="113" stroke-width="1.2"/>
-    <line x1="385" y1="102" x2="394" y2="118" stroke-width="1.2"/>
-    <line x1="409" y1="107" x2="418" y2="123" stroke-width="1.2"/>
-    <line x1="433" y1="112" x2="443" y2="128" stroke-width="1.2"/>
-    <line x1="457" y1="117" x2="467" y2="133" stroke-width="1.2"/>
-    <line x1="481" y1="122" x2="492" y2="139" stroke-width="1.2"/>
-    <line x1="505" y1="127" x2="516" y2="144" stroke-width="1.2"/>
-    <line x1="529" y1="132" x2="541" y2="149" stroke-width="1.2"/>
-    <line x1="553" y1="138" x2="565" y2="155" stroke-width="1.2"/>
-    <line x1="577" y1="143" x2="590" y2="160" stroke-width="1.2"/>
-    <line x1="601" y1="148" x2="614" y2="165" stroke-width="1.2"/>
-    <line x1="625" y1="153" x2="639" y2="171" stroke-width="1.2"/>
-    <line x1="649" y1="158" x2="663" y2="176" stroke-width="1.2"/>
-    <line x1="673" y1="163" x2="688" y2="181" stroke-width="1.2"/>
-    <line x1="697" y1="168" x2="712" y2="187" stroke-width="1.2"/>
-  </g>
-
-  <!-- === KUDAM (large gourd body) === -->
-  <ellipse cx="790" cy="260" rx="75" ry="62" fill="url(#kudamWood)"
-           stroke="#6D4C41" stroke-width="1" filter="url(#dropShadow)"/>
-  <!-- Kudam highlight -->
-  <ellipse cx="775" cy="245" rx="30" ry="22" fill="#FFFFFF" opacity="0.05"/>
-  <!-- Wood grain lines on kudam -->
-  <g stroke="#000000" opacity="0.06" stroke-width="0.5">
-    <line x1="730" y1="245" x2="850" y2="247"/>
-    <line x1="735" y1="258" x2="845" y2="260"/>
-    <line x1="733" y1="271" x2="847" y2="273"/>
-  </g>
-  <!-- Sound hole -->
-  <ellipse cx="795" cy="258" rx="12" ry="10" fill="#1A1A2E" opacity="0.85"/>
-  <ellipse cx="795" cy="258" rx="12" ry="10" fill="none" stroke="#C4A265" stroke-width="0.5" opacity="0.3"/>
-
-  <!-- === BRIDGE (brass bar on kudam) === -->
-  <rect x="732" y="234" width="6" height="22" rx="2" fill="url(#brassGrad)"
-        stroke="#D4AF37" stroke-width="0.3" opacity="0.9"/>
-  <!-- Bridge highlight -->
-  <line x1="733" y1="236" x2="733" y2="254" stroke="#FFFFFF" stroke-width="0.4" opacity="0.2"/>
-
-  <!-- === UPPER GOURD (small, near yali) === -->
-  <ellipse cx="88" cy="58" rx="18" ry="22" fill="url(#gourdWood)"
-           stroke="#6D4C41" stroke-width="0.7" filter="url(#dropShadow)"/>
-  <!-- Gourd highlight -->
-  <ellipse cx="84" cy="52" rx="7" ry="8" fill="#FFFFFF" opacity="0.05"/>
-
-  <!-- === YALI (ornate dragon head carving) === -->
-  <g filter="url(#dropShadow)">
-    <!-- Head/crown -->
-    <path d="M 100,42  C 85,25 60,15 50,22  C 40,28 38,38 42,42
-             C 35,35 28,28 30,18  C 32,10 45,5 55,10
-             C 50,4 58,0 68,5  C 75,9 78,18 75,25
-             C 82,18 92,20 95,30  Z"
+  <!-- ============ YALI (dragon head at top) ============ -->
+  <g transform="translate(97,10)" filter="url(#shadow)">
+    <!-- Head crown -->
+    <path d="M 0,38  C -8,20 -20,10 -25,15  C -30,20 -28,32 -22,35
+             C -28,28 -35,22 -32,12  C -28,4 -18,0 -10,5
+             C -15,-2 -8,-5 2,0  C 8,4 10,14 8,22
+             C 14,16 20,18 18,28  Z"
           fill="url(#yaliGold)" stroke="#8B7D4A" stroke-width="0.5"/>
     <!-- Jaw -->
-    <path d="M 100,42  C 92,48 80,52 70,50  C 60,48 50,42 42,42
-             C 48,50 58,55 68,54  C 78,53 90,50 100,42  Z"
+    <path d="M 0,38  C -5,44 -14,48 -20,46  C -26,44 -28,38 -22,35
+             C -18,42 -10,46 -4,44  C 2,42 2,40 0,38  Z"
           fill="url(#yaliGold)" stroke="#8B7D4A" stroke-width="0.5"/>
-    <!-- Horn/crest detail -->
-    <path d="M 55,10  C 52,2 58,-2 65,3" fill="none" stroke="#D4AF37" stroke-width="1" opacity="0.6"/>
+    <!-- Horn -->
+    <path d="M -10,5  C -12,-3 -6,-6 0,0" fill="none" stroke="#D4AF37" stroke-width="1" opacity="0.6"/>
     <!-- Eye -->
-    <circle cx="62" cy="28" r="2.5" fill="#1A1A2E"/>
-    <circle cx="62.5" cy="27.5" r="1" fill="#D4AF37"/>
-    <!-- Nostril -->
-    <circle cx="47" cy="38" r="1.2" fill="#1A1A2E" opacity="0.5"/>
-    <!-- Decorative ear/scroll -->
-    <path d="M 78,20  C 82,14 88,16 86,22" fill="none" stroke="#D4AF37" stroke-width="0.8" opacity="0.5"/>
+    <circle cx="-8" cy="22" r="2.2" fill="#1A1A2E"/>
+    <circle cx="-7.5" cy="21.5" r="0.9" fill="#D4AF37"/>
+    <!-- Ear scroll -->
+    <path d="M 10,16  C 14,10 18,13 16,18" fill="none" stroke="#D4AF37" stroke-width="0.7" opacity="0.5"/>
   </g>
 
-  <!-- === NECK-TO-KUDAM CONNECTOR === -->
-  <path d="M 725,224  L 740,232  L 740,256  L 725,260  Z"
-        fill="#4E342E" stroke="#6D4C41" stroke-width="0.5"/>
+  <!-- ============ UPPER GOURD ============ -->
+  <ellipse cx="97" cy="68" rx="22" ry="18" fill="url(#gourdWood)"
+           stroke="#6D4C41" stroke-width="0.7" filter="url(#shadow)"/>
+  <!-- Tuning pegs (small gold dots on sides) -->
+  <circle cx="73" cy="62" r="2.5" fill="#C4A265" stroke="#8B7D4A" stroke-width="0.3"/>
+  <circle cx="73" cy="70" r="2.5" fill="#C4A265" stroke="#8B7D4A" stroke-width="0.3"/>
+  <circle cx="121" cy="62" r="2.5" fill="#C4A265" stroke="#8B7D4A" stroke-width="0.3"/>
+  <circle cx="121" cy="70" r="2.5" fill="#C4A265" stroke="#8B7D4A" stroke-width="0.3"/>
 
-  <!-- === 4 MAIN STRINGS (yali to bridge, varying thickness) === -->
+  <!-- ============ NECK (long, running downward) ============ -->
+  <rect x="78" y="85" width="38" height="400" rx="3"
+        fill="url(#neckWood)" stroke="#6D4C41" stroke-width="0.6" filter="url(#shadow)"/>
+  <!-- Neck highlight (left edge) -->
+  <rect x="78" y="85" width="4" height="400" rx="2" fill="#FFF" opacity="0.04"/>
+  <!-- Neck shadow (right edge) -->
+  <rect x="112" y="85" width="4" height="400" rx="2" fill="#000" opacity="0.08"/>
+
+  <!-- ============ FRETS (24 horizontal gold bars) ============ -->
+  <g stroke="#C4A265" stroke-width="1.2" opacity="0.5">
+    <line x1="79" y1="101" x2="115" y2="101"/>
+    <line x1="79" y1="117" x2="115" y2="117"/>
+    <line x1="79" y1="133" x2="115" y2="133"/>
+    <line x1="79" y1="149" x2="115" y2="149"/>
+    <line x1="79" y1="165" x2="115" y2="165"/>
+    <line x1="79" y1="181" x2="115" y2="181"/>
+    <line x1="79" y1="197" x2="115" y2="197"/>
+    <line x1="79" y1="213" x2="115" y2="213"/>
+    <line x1="79" y1="229" x2="115" y2="229"/>
+    <line x1="79" y1="245" x2="115" y2="245"/>
+    <line x1="79" y1="261" x2="115" y2="261"/>
+    <line x1="79" y1="277" x2="115" y2="277"/>
+    <line x1="79" y1="293" x2="115" y2="293"/>
+    <line x1="79" y1="309" x2="115" y2="309"/>
+    <line x1="79" y1="325" x2="115" y2="325"/>
+    <line x1="79" y1="341" x2="115" y2="341"/>
+    <line x1="79" y1="357" x2="115" y2="357"/>
+    <line x1="79" y1="373" x2="115" y2="373"/>
+    <line x1="79" y1="389" x2="115" y2="389"/>
+    <line x1="79" y1="405" x2="115" y2="405"/>
+    <line x1="79" y1="421" x2="115" y2="421"/>
+    <line x1="79" y1="437" x2="115" y2="437"/>
+    <line x1="79" y1="453" x2="115" y2="453"/>
+    <line x1="79" y1="469" x2="115" y2="469"/>
+  </g>
+
+  <!-- ============ KUDAM (large gourd at bottom) ============ -->
+  <ellipse cx="100" cy="530" rx="58" ry="48" fill="url(#kudamWood)"
+           stroke="#6D4C41" stroke-width="0.8" filter="url(#shadow)"/>
+  <!-- Wood grain -->
+  <g stroke="#000" opacity="0.06" stroke-width="0.5">
+    <line x1="55" y1="520" x2="145" y2="520"/>
+    <line x1="52" y1="532" x2="148" y2="532"/>
+    <line x1="55" y1="544" x2="145" y2="544"/>
+  </g>
+  <!-- Sound hole -->
+  <ellipse cx="100" cy="530" rx="11" ry="9" fill="#1A1A2E" opacity="0.85"/>
+  <ellipse cx="100" cy="530" rx="11" ry="9" fill="none" stroke="#C4A265"
+           stroke-width="0.5" opacity="0.3"/>
+  <!-- Kudam highlight -->
+  <ellipse cx="88" cy="518" rx="18" ry="14" fill="#FFF" opacity="0.04"/>
+
+  <!-- ============ BRIDGE (gold bar on top of kudam) ============ -->
+  <rect x="81" y="479" width="32" height="5" rx="1.5" fill="url(#brassGrad)"
+        stroke="#D4AF37" stroke-width="0.3" opacity="0.9"/>
+  <!-- Bridge highlight -->
+  <line x1="82" y1="480" x2="112" y2="480" stroke="#FFF" stroke-width="0.4" opacity="0.15"/>
+
+  <!-- ============ 4 MAIN STRINGS (top to bottom, well-spaced) ============ -->
   <g>
-    <!-- Sa (thickest) -->
-    <line x1="105" y1="54" x2="735" y2="238" stroke="#E8D5A3" stroke-width="2.6" opacity="0.8"/>
+    <!-- Sa (thickest, leftmost) -->
+    <line x1="85" y1="95" x2="85" y2="480" stroke="#E8D5A3" stroke-width="2.8" opacity="0.85"/>
     <!-- Pa -->
-    <line x1="107" y1="62" x2="735" y2="243" stroke="#E8D5A3" stroke-width="2.0" opacity="0.75"/>
+    <line x1="93" y1="95" x2="93" y2="480" stroke="#E8D5A3" stroke-width="2.2" opacity="0.80"/>
     <!-- sa -->
-    <line x1="109" y1="70" x2="735" y2="248" stroke="#E8D5A3" stroke-width="1.5" opacity="0.7"/>
-    <!-- Pa (upper, thinnest) -->
-    <line x1="111" y1="78" x2="735" y2="252" stroke="#E8D5A3" stroke-width="1.1" opacity="0.65"/>
+    <line x1="101" y1="95" x2="101" y2="480" stroke="#E8D5A3" stroke-width="1.7" opacity="0.75"/>
+    <!-- Pa (thinnest, rightmost) -->
+    <line x1="109" y1="95" x2="109" y2="480" stroke="#E8D5A3" stroke-width="1.2" opacity="0.70"/>
   </g>
 
-  <!-- === 3 THALAM STRINGS (shorter, branching near bridge) === -->
-  <g opacity="0.6">
-    <line x1="710" y1="255" x2="760" y2="290" stroke="#E8D5A3" stroke-width="1.3"/>
-    <line x1="700" y1="252" x2="755" y2="298" stroke="#E8D5A3" stroke-width="1.1"/>
-    <line x1="690" y1="250" x2="748" y2="305" stroke="#E8D5A3" stroke-width="0.9"/>
+  <!-- String labels at top -->
+  <text x="85" y="92" fill="#9A8C78" font-size="6" font-family="sans-serif" text-anchor="middle">Sa</text>
+  <text x="93" y="92" fill="#9A8C78" font-size="6" font-family="sans-serif" text-anchor="middle">Pa</text>
+  <text x="101" y="92" fill="#9A8C78" font-size="6" font-family="sans-serif" text-anchor="middle">sa</text>
+  <text x="109" y="92" fill="#9A8C78" font-size="6" font-family="sans-serif" text-anchor="middle">Pa</text>
+
+  <!-- ============ 3 THALAM STRINGS (branching near bridge) ============ -->
+  <g opacity="0.65">
+    <line x1="87" y1="470" x2="55" y2="520" stroke="#E8D5A3" stroke-width="1.4"/>
+    <line x1="90" y1="473" x2="50" y2="535" stroke="#E8D5A3" stroke-width="1.2"/>
+    <line x1="93" y1="476" x2="46" y2="548" stroke="#E8D5A3" stroke-width="1.0"/>
   </g>
   <!-- Thalam labels -->
-  <text x="763" y="293" fill="#D4AF37" font-size="11" font-weight="bold" font-family="sans-serif">Z</text>
-  <text x="758" y="301" fill="#D4AF37" font-size="11" font-weight="bold" font-family="sans-serif">X</text>
-  <text x="751" y="309" fill="#D4AF37" font-size="11" font-weight="bold" font-family="sans-serif">C</text>
-
-  <!-- === STRING LABELS (near yali end) === -->
-  <text x="82" y="55" fill="#9A8C78" font-size="7" font-family="sans-serif" text-anchor="end">Sa</text>
-  <text x="82" y="63" fill="#9A8C78" font-size="7" font-family="sans-serif" text-anchor="end">Pa</text>
-  <text x="82" y="71" fill="#9A8C78" font-size="7" font-family="sans-serif" text-anchor="end">sa</text>
-  <text x="82" y="79" fill="#9A8C78" font-size="7" font-family="sans-serif" text-anchor="end">Pa</text>
+  <text x="48" y="519" fill="#D4AF37" font-size="10" font-weight="bold" font-family="sans-serif">Z</text>
+  <text x="43" y="534" fill="#D4AF37" font-size="10" font-weight="bold" font-family="sans-serif">X</text>
+  <text x="39" y="548" fill="#D4AF37" font-size="10" font-weight="bold" font-family="sans-serif">C</text>
 </svg>
 )SVG";
 }

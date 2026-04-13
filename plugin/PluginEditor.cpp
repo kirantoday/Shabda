@@ -218,12 +218,12 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
 
     // --- Keyboard ---
     keyboardComponent.setKeyPressBaseOctave(5);
-    keyboardComponent.setAvailableRange(36, 96);
+    keyboardComponent.setAvailableRange(24, 108);  // wide range so keys fill the full width
     // Cream white keys with visible dark separators, dark black keys, gold highlights
     keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffEDE4D4));  // warm cream
     keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff2A2A3E));  // dark navy
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff4A4540));  // dark border between white keys
-    keyboardComponent.setKeyWidth(12.0f);  // slightly smaller for more keys visible
+    keyboardComponent.setKeyWidth(10.0f);  // narrow keys to fill full width without gaps
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff8B7D5A));  // muted gold on cream
@@ -473,7 +473,7 @@ void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
     {
         int offset = tuningCombo.getSelectedId() - 1;
         processorRef.uiTuningOffset.store(offset, std::memory_order_relaxed);
-        keyboardComponent.setAvailableRange(48 + offset, 48 + offset + 48);
+        keyboardComponent.setAvailableRange(24, 108);  // keep full range
     }
     else if (combo == &bendRangeCombo)
         processorRef.uiBendRange.store(static_cast<float>(bendRangeCombo.getSelectedId()), std::memory_order_relaxed);
