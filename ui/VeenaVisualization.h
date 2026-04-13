@@ -46,9 +46,10 @@ private:
     // Draw sub-components
     void drawNeck(juce::Graphics& g, juce::Rectangle<float> area);
     void drawFrets(juce::Graphics& g, juce::Rectangle<float> neckArea);
-    void drawMainStrings(juce::Graphics& g, juce::Rectangle<float> neckArea);
+    void drawBridge(juce::Graphics& g, juce::Rectangle<float> bridgeArea, juce::Rectangle<float> neckArea);
+    void drawMainStrings(juce::Graphics& g, juce::Rectangle<float> neckArea, juce::Rectangle<float> bridgeArea);
     void drawThalamStrings(juce::Graphics& g, juce::Rectangle<float> area);
-    void drawKudam(juce::Graphics& g, juce::Rectangle<float> area);
+    void drawKudam(juce::Graphics& g, juce::Rectangle<float> area, juce::Rectangle<float> bridgeArea);
     void drawSympatheticStrings(juce::Graphics& g, juce::Rectangle<float> neckArea);
     void drawFingerPosition(juce::Graphics& g, juce::Rectangle<float> neckArea);
 

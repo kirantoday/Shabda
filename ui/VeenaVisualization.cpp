@@ -13,7 +13,6 @@ VeenaVisualization::~VeenaVisualization()
 
 void VeenaVisualization::timerCallback()
 {
-    // Smooth animation values with decay.
     for (int i = 0; i < 2; ++i)
         smoothedAmplitudes[i] = smoothedAmplitudes[i] * 0.88f + stringAmplitudes[i] * 0.12f;
 
@@ -55,46 +54,72 @@ void VeenaVisualization::paint(juce::Graphics& g)
         theme::color::background, bounds.getCentreX(), bounds.getBottom(), false));
     g.fillRoundedRectangle(bounds, static_cast<float>(theme::dim::panelRadius));
 
-    // Subtle border
     g.setColour(theme::color::panelBorder);
     g.drawRoundedRectangle(bounds.reduced(0.5f), static_cast<float>(theme::dim::panelRadius), 1.0f);
 
-    // Layout: neck on left 70%, kudam on right 25%, thalam in between
-    float kudamWidth = bounds.getWidth() * 0.20f;
-    float thalamWidth = bounds.getWidth() * 0.10f;
-    auto neckArea = bounds.removeFromLeft(bounds.getWidth() - kudamWidth - thalamWidth).reduced(15, 20);
-    auto thalamArea = bounds.removeFromLeft(thalamWidth).reduced(4, 30);
-    auto kudamArea = bounds.reduced(8, 15);
+    // Layout: neck 65%, bridge gap 2%, kudam 18%, thalam 15%
+    float kudamFrac = 0.18f;
+    float thalamFrac = 0.12f;
+    float bridgeFrac = 0.02f;
+    float neckFrac = 1.0f - kudamFrac - thalamFrac - bridgeFrac;
+
+    auto neckArea = bounds.removeFromLeft(bounds.getWidth() * neckFrac).reduced(15, 20);
+    auto bridgeArea = bounds.removeFromLeft(bounds.getWidth() * (bridgeFrac / (1.0f - neckFrac))).reduced(0, 25);
+    auto thalamArea = bounds.removeFromRight(bounds.getWidth() * (thalamFrac / (kudamFrac + thalamFrac))).reduced(2, 30);
+    auto kudamArea = bounds.reduced(4, 10);
 
     drawNeck(g, neckArea);
     drawFrets(g, neckArea);
     drawSympatheticStrings(g, neckArea);
-    drawMainStrings(g, neckArea);
+    drawBridge(g, bridgeArea, neckArea);
+    drawMainStrings(g, neckArea, bridgeArea);
     drawFingerPosition(g, neckArea);
+    drawKudam(g, kudamArea, bridgeArea);
     drawThalamStrings(g, thalamArea);
-    drawKudam(g, kudamArea);
 }
 
 void VeenaVisualization::drawNeck(juce::Graphics& g, juce::Rectangle<float> area)
 {
-    // Neck body — subtle gradient background darker at edges.
-    auto neckRect = area.reduced(0, 6);
-    juce::ColourGradient neckGrad(
-        theme::color::wood.withAlpha(0.12f), neckRect.getCentreX(), neckRect.getCentreY(),
-        theme::color::background.withAlpha(0.3f), neckRect.getCentreX(), neckRect.getY(), true);
-    g.setGradientFill(neckGrad);
-    g.fillRoundedRectangle(neckRect, 4.0f);
+    auto neckRect = area.reduced(0, 4);
 
-    // Subtle edge darkening for depth
-    g.setColour(theme::color::background.withAlpha(0.15f));
-    g.fillRoundedRectangle(neckRect.getX(), neckRect.getY(), neckRect.getWidth(), 6.0f, 4.0f);
-    g.fillRoundedRectangle(neckRect.getX(), neckRect.getBottom() - 6, neckRect.getWidth(), 6.0f, 4.0f);
+    // Wood-grain gradient background: dark brown left to medium brown right
+    // Horizontal gradient to simulate the grain direction along the neck.
+    juce::ColourGradient woodGrain(
+        juce::Colour(0xff2A1A0E), neckRect.getX(), neckRect.getCentreY(),       // dark brown
+        juce::Colour(0xff3D2817), neckRect.getRight(), neckRect.getCentreY(),    // medium brown
+        false);
+    // Add midpoint color stops for grain variation
+    woodGrain.addColour(0.3, juce::Colour(0xff33200F));
+    woodGrain.addColour(0.6, juce::Colour(0xff382315));
+    woodGrain.addColour(0.8, juce::Colour(0xff3A2515));
+    g.setGradientFill(woodGrain);
+    g.fillRoundedRectangle(neckRect, 5.0f);
+
+    // 3D bevel: top edge lighter (highlight), bottom edge darker (shadow)
+    juce::ColourGradient topBevel(
+        juce::Colour(0x25FFFFFF), neckRect.getX(), neckRect.getY(),
+        juce::Colour(0x00000000), neckRect.getX(), neckRect.getY() + 8, false);
+    g.setGradientFill(topBevel);
+    g.fillRoundedRectangle(neckRect.getX(), neckRect.getY(), neckRect.getWidth(), 8.0f, 5.0f);
+
+    juce::ColourGradient bottomShadow(
+        juce::Colour(0x00000000), neckRect.getX(), neckRect.getBottom() - 8,
+        juce::Colour(0x30000000), neckRect.getX(), neckRect.getBottom(), false);
+    g.setGradientFill(bottomShadow);
+    g.fillRoundedRectangle(neckRect.getX(), neckRect.getBottom() - 8, neckRect.getWidth(), 8.0f, 5.0f);
+
+    // Neck outline with subtle bevel
+    g.setColour(juce::Colour(0xff4A3520).withAlpha(0.6f));
+    g.drawRoundedRectangle(neckRect, 5.0f, 1.0f);
+
+    // Inner highlight line (top edge gleam)
+    g.setColour(juce::Colour(0x15FFFFFF));
+    g.drawLine(neckRect.getX() + 6, neckRect.getY() + 1,
+               neckRect.getRight() - 6, neckRect.getY() + 1, 0.5f);
 }
 
 void VeenaVisualization::drawFrets(juce::Graphics& g, juce::Rectangle<float> neckArea)
 {
-    // 24 frets evenly spaced along the neck.
-    // Active fret glows gold.
     float fretSpacing = neckArea.getWidth() / static_cast<float>(NUM_FRETS + 1);
 
     for (int i = 0; i <= NUM_FRETS; ++i)
@@ -103,39 +128,72 @@ void VeenaVisualization::drawFrets(juce::Graphics& g, juce::Rectangle<float> nec
         int fretNote = BASE_MIDI_NOTE + i;
         bool isActive = (fretNote == activeNote);
 
-        g.setColour(isActive ? theme::color::fretActive.withAlpha(0.7f) : theme::color::fret.withAlpha(0.18f));
-        g.drawLine(fretX, neckArea.getY() + 5, fretX, neckArea.getBottom() - 5, isActive ? 1.5f : 0.5f);
-
-        // Active fret glow
         if (isActive)
         {
-            g.setColour(theme::color::fretActive.withAlpha(0.15f));
-            g.fillRect(fretX - fretSpacing * 0.4f, neckArea.getY(),
-                       fretSpacing * 0.8f, neckArea.getHeight());
+            // Active fret: brighter gold, thicker
+            g.setColour(theme::color::fretActive.withAlpha(0.6f));
+            g.drawLine(fretX, neckArea.getY() + 6, fretX, neckArea.getBottom() - 6, 1.5f);
+
+            // Soft glow behind active fret
+            g.setColour(theme::color::fretActive.withAlpha(0.1f));
+            g.fillRect(fretX - fretSpacing * 0.35f, neckArea.getY() + 4,
+                       fretSpacing * 0.7f, neckArea.getHeight() - 8);
+        }
+        else
+        {
+            // Subtle gold fret lines at 15% opacity — thin, not a grid
+            g.setColour(theme::color::gold.withAlpha(0.15f));
+            g.drawLine(fretX, neckArea.getY() + 8, fretX, neckArea.getBottom() - 8, 0.5f);
         }
     }
 }
 
-void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<float> neckArea)
+void VeenaVisualization::drawBridge(juce::Graphics& g, juce::Rectangle<float> bridgeArea,
+                                     juce::Rectangle<float> neckArea)
 {
-    // 4 main strings rendered as horizontal lines with vibration animation.
-    // When active, they oscillate sinusoidally.
+    // Brass bridge bar where strings meet the kudam body.
+    float bridgeX = bridgeArea.getCentreX();
+    float bridgeTop = neckArea.getY() + 10;
+    float bridgeBottom = neckArea.getBottom() - 10;
+    float bridgeW = 5.0f;
+
+    // Brass gradient
+    juce::ColourGradient brassGrad(
+        theme::color::goldBright, bridgeX - bridgeW * 0.5f, bridgeTop,
+        theme::color::gold.darker(0.3f), bridgeX + bridgeW * 0.5f, bridgeTop, false);
+    g.setGradientFill(brassGrad);
+    g.fillRoundedRectangle(bridgeX - bridgeW * 0.5f, bridgeTop, bridgeW, bridgeBottom - bridgeTop, 2.0f);
+
+    // Highlight edge
+    g.setColour(juce::Colour(0x30FFFFFF));
+    g.drawLine(bridgeX - bridgeW * 0.5f, bridgeTop + 2,
+               bridgeX - bridgeW * 0.5f, bridgeBottom - 2, 0.5f);
+}
+
+void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<float> neckArea,
+                                          juce::Rectangle<float> bridgeArea)
+{
+    // 4 main strings with different thicknesses (Sa thickest, upper Pa thinnest).
+    // Real veena strings get thinner as pitch goes up.
     const char* stringNames[] = { "Sa", "Pa", "sa", "Pa" };
+    const float stringThickness[] = { 2.8f, 2.2f, 1.6f, 1.2f };       // idle thickness
+    const float stringActiveThickness[] = { 3.5f, 2.8f, 2.2f, 1.8f }; // active thickness
     float stringSpacing = neckArea.getHeight() / 5.0f;
+
+    // Strings extend from neck to bridge
+    float endX = bridgeArea.getCentreX();
 
     for (int s = 0; s < 4; ++s)
     {
         float stringY = neckArea.getY() + stringSpacing * static_cast<float>(s + 1);
 
-        // Use voice 0 amplitude for strings 0-1, voice 1 for strings 2-3
         int voiceIdx = (s < 2) ? 0 : 1;
         float amp = smoothedAmplitudes[voiceIdx];
-        bool isActive = (amp > 0.01f) && (s == 0 || s == 2);  // only first string of each voice
+        bool isActive = (amp > 0.01f) && (s == 0 || s == 2);
 
-        // Draw the string with vibration displacement
+        // Build string path with catenary and vibration
         juce::Path stringPath;
         float startX = neckArea.getX();
-        float endX = neckArea.getRight();
         int segments = 80;
 
         stringPath.startNewSubPath(startX, stringY);
@@ -144,48 +202,68 @@ void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<floa
             float t = static_cast<float>(i) / static_cast<float>(segments);
             float x = startX + t * (endX - startX);
 
-            // Catenary sag: slight downward curve, max ~2px at center.
-            // Real strings sag under gravity — this adds realism.
-            float catenary = 2.0f * std::sin(t * juce::MathConstants<float>::pi);
+            // Catenary sag: thicker strings sag more
+            float sagAmount = 1.5f + stringThickness[s] * 0.3f;
+            float catenary = sagAmount * std::sin(t * juce::MathConstants<float>::pi);
 
-            // Vibration displacement when active.
+            // Vibration
             float envelope = std::sin(t * juce::MathConstants<float>::pi);
-            float vibration = amp * 6.0f * envelope *
+            float vibration = amp * 5.0f * envelope *
                 std::sin(t * 12.0f + animPhase * (2.0f + static_cast<float>(s) * 0.3f));
 
             stringPath.lineTo(x, stringY + catenary + vibration);
         }
 
-        // String color: brighter and thicker when active
+        float thickness = isActive ? stringActiveThickness[s] : stringThickness[s];
+
+        // Shadow under string (1px dark shadow, offset down)
+        {
+            juce::Path shadowPath;
+            shadowPath.startNewSubPath(startX, stringY + 1.5f);
+            for (int i = 1; i <= segments; ++i)
+            {
+                float t = static_cast<float>(i) / static_cast<float>(segments);
+                float x = startX + t * (endX - startX);
+                float sagAmount = 1.5f + stringThickness[s] * 0.3f;
+                float catenary = sagAmount * std::sin(t * juce::MathConstants<float>::pi);
+                float envelope = std::sin(t * juce::MathConstants<float>::pi);
+                float vibration = amp * 5.0f * envelope *
+                    std::sin(t * 12.0f + animPhase * (2.0f + static_cast<float>(s) * 0.3f));
+                shadowPath.lineTo(x, stringY + 1.5f + catenary + vibration);
+            }
+            g.setColour(juce::Colour(0x20000000));
+            g.strokePath(shadowPath, juce::PathStrokeType(thickness + 1.0f));
+        }
+
+        // String color
         juce::Colour stringCol = isActive
-            ? theme::color::stringActive.withAlpha(0.8f + amp * 0.2f)
-            : theme::color::stringIdle.withAlpha(0.6f);
+            ? theme::color::stringActive.withAlpha(0.85f + amp * 0.15f)
+            : theme::color::stringIdle.withAlpha(0.55f);
 
         g.setColour(stringCol);
-        g.strokePath(stringPath, juce::PathStrokeType(isActive ? 3.0f : 2.0f));
+        g.strokePath(stringPath, juce::PathStrokeType(thickness));
 
-        // Glow for active strings — wider, more prominent
+        // Gold glow for active strings
         if (isActive && amp > 0.02f)
         {
-            g.setColour(theme::color::stringGlow.withAlpha(amp * 0.5f));
-            g.strokePath(stringPath, juce::PathStrokeType(7.0f));
+            g.setColour(theme::color::stringGlow.withAlpha(amp * 0.45f));
+            g.strokePath(stringPath, juce::PathStrokeType(thickness + 5.0f));
 
-            // Inner bright glow
-            g.setColour(theme::color::goldBright.withAlpha(amp * 0.15f));
-            g.strokePath(stringPath, juce::PathStrokeType(12.0f));
+            g.setColour(theme::color::goldBright.withAlpha(amp * 0.12f));
+            g.strokePath(stringPath, juce::PathStrokeType(thickness + 10.0f));
         }
 
         // String label
         g.setColour(theme::color::textSecondary.withAlpha(0.5f));
         g.setFont(juce::FontOptions(9.0f));
-        g.drawText(stringNames[s], static_cast<int>(neckArea.getX()) - 22, static_cast<int>(stringY) - 5, 20, 10,
+        g.drawText(stringNames[s], static_cast<int>(neckArea.getX()) - 22,
+                   static_cast<int>(stringY) - 5, 20, 10,
                    juce::Justification::centredRight, false);
     }
 }
 
 void VeenaVisualization::drawThalamStrings(juce::Graphics& g, juce::Rectangle<float> area)
 {
-    // 3 thalam strings — short, angled, flash on pluck.
     const char* labels[] = { "Z", "X", "C" };
     float spacing = area.getHeight() / 4.0f;
 
@@ -199,73 +277,109 @@ void VeenaVisualization::drawThalamStrings(juce::Graphics& g, juce::Rectangle<fl
             : theme::color::stringIdle.withAlpha(0.4f);
 
         g.setColour(col);
-        g.drawLine(area.getX(), y, area.getRight(), y - 8, flash > 0.05f ? 2.0f : 1.0f);
+        g.drawLine(area.getX(), y, area.getRight(), y - 6, flash > 0.05f ? 2.0f : 1.2f);
 
-        // Glow
         if (flash > 0.1f)
         {
             g.setColour(theme::color::goldBright.withAlpha(flash * 0.25f));
-            g.drawLine(area.getX(), y, area.getRight(), y - 8, 5.0f);
+            g.drawLine(area.getX(), y, area.getRight(), y - 6, 5.0f);
         }
 
-        // Label — bright gold, larger text for readability
+        // Label
         g.setColour(theme::color::gold.withAlpha(0.85f));
         g.setFont(juce::FontOptions(11.0f, juce::Font::bold));
-        g.drawText(labels[i], static_cast<int>(area.getRight() + 3), static_cast<int>(y) - 8, 16, 14,
+        g.drawText(labels[i], static_cast<int>(area.getRight() + 3),
+                   static_cast<int>(y) - 8, 16, 14,
                    juce::Justification::centredLeft, false);
     }
 }
 
-void VeenaVisualization::drawKudam(juce::Graphics& g, juce::Rectangle<float> area)
+void VeenaVisualization::drawKudam(juce::Graphics& g, juce::Rectangle<float> area,
+                                    juce::Rectangle<float> bridgeArea)
 {
-    // Stylized gourd resonator body — elliptical shape.
-    float cx = area.getCentreX();
+    // Gourd body positioned so it connects to the bridge.
+    // The left edge of the kudam aligns with the bridge area.
+    float cx = area.getCentreX() + 4.0f;
     float cy = area.getCentreY();
-    float rx = area.getWidth() * 0.45f;
-    float ry = area.getHeight() * 0.4f;
+    float rx = area.getWidth() * 0.48f;
+    float ry = area.getHeight() * 0.42f;
+
+    // Connection piece: neck-to-kudam transition
+    // Small trapezoidal wood piece between bridge and kudam
+    {
+        float connLeft = bridgeArea.getRight();
+        float connRight = cx - rx + 4;
+        float connTop = cy - ry * 0.35f;
+        float connBottom = cy + ry * 0.35f;
+
+        juce::Path connector;
+        connector.startNewSubPath(connLeft, connTop + 2);
+        connector.lineTo(connRight, connTop - 4);
+        connector.lineTo(connRight, connBottom + 4);
+        connector.lineTo(connLeft, connBottom - 2);
+        connector.closeSubPath();
+
+        g.setColour(juce::Colour(0xff3D2817));
+        g.fillPath(connector);
+        g.setColour(juce::Colour(0xff4A3520).withAlpha(0.5f));
+        g.strokePath(connector, juce::PathStrokeType(0.5f));
+    }
 
     // Body glow when sound is active
     if (smoothedPeak > 0.01f)
     {
         float glowAlpha = smoothedPeak * 0.2f;
         g.setColour(theme::color::woodLight.withAlpha(glowAlpha));
-        g.fillEllipse(cx - rx - 4, cy - ry - 4, (rx + 4) * 2, (ry + 4) * 2);
+        g.fillEllipse(cx - rx - 5, cy - ry - 5, (rx + 5) * 2, (ry + 5) * 2);
     }
 
-    // Main body shape with wood gradient
-    juce::ColourGradient bodyGrad(theme::color::wood, cx - rx * 0.3f, cy - ry * 0.3f,
-                                   theme::color::wood.darker(0.5f), cx + rx * 0.5f, cy + ry * 0.5f, true);
+    // Main body with rich wood gradient
+    juce::ColourGradient bodyGrad(
+        juce::Colour(0xffA0662B), cx - rx * 0.4f, cy - ry * 0.4f,     // warm highlight
+        juce::Colour(0xff5A2D0C), cx + rx * 0.4f, cy + ry * 0.4f,     // deep shadow
+        true);
     g.setGradientFill(bodyGrad);
     g.fillEllipse(cx - rx, cy - ry, rx * 2, ry * 2);
 
-    // Outline
-    g.setColour(theme::color::woodLight.withAlpha(0.4f));
-    g.drawEllipse(cx - rx, cy - ry, rx * 2, ry * 2, 1.5f);
+    // Wood grain lines on kudam (subtle horizontal arcs)
+    g.setColour(juce::Colour(0x08000000));
+    for (int i = -3; i <= 3; ++i)
+    {
+        float grainY = cy + static_cast<float>(i) * ry * 0.22f;
+        g.drawLine(cx - rx * 0.7f, grainY, cx + rx * 0.7f, grainY + 1, 0.5f);
+    }
 
-    // Sound hole (small dark circle)
-    float holeR = rx * 0.2f;
-    g.setColour(theme::color::background.withAlpha(0.7f));
-    g.fillEllipse(cx - holeR, cy - holeR * 0.5f, holeR * 2, holeR);
+    // Outline with highlight
+    g.setColour(theme::color::woodLight.withAlpha(0.35f));
+    g.drawEllipse(cx - rx, cy - ry, rx * 2, ry * 2, 1.2f);
+
+    // Sound hole
+    float holeR = rx * 0.18f;
+    g.setColour(theme::color::background.withAlpha(0.8f));
+    g.fillEllipse(cx - holeR, cy - holeR * 0.6f, holeR * 2, holeR * 1.2f);
+    // Sound hole rim
+    g.setColour(theme::color::gold.withAlpha(0.2f));
+    g.drawEllipse(cx - holeR, cy - holeR * 0.6f, holeR * 2, holeR * 1.2f, 0.5f);
 
     // Label
-    g.setColour(theme::color::textSecondary.withAlpha(0.4f));
+    g.setColour(theme::color::textSecondary.withAlpha(0.35f));
     g.setFont(juce::FontOptions(9.0f));
-    g.drawText("Kudam", area.removeFromBottom(14), juce::Justification::centred, false);
+    auto labelArea = juce::Rectangle<float>(cx - 20, area.getBottom() - 14, 40, 14);
+    g.drawText("Kudam", labelArea, juce::Justification::centred, false);
 }
 
 void VeenaVisualization::drawSympatheticStrings(juce::Graphics& g, juce::Rectangle<float> neckArea)
 {
-    // Thin lines below main strings, shimmer when resonating.
-    float baseY = neckArea.getBottom() - 12;
+    float baseY = neckArea.getBottom() - 10;
 
     for (int i = 0; i < 3; ++i)
     {
-        float y = baseY + static_cast<float>(i) * 3.0f;
+        float y = baseY + static_cast<float>(i) * 2.5f;
         float shimmer = smoothedSympathetic;
 
         juce::Colour col = (shimmer > 0.01f)
-            ? theme::color::gold.withAlpha(0.15f + shimmer * 0.35f)
-            : theme::color::stringIdle.withAlpha(0.15f);
+            ? theme::color::gold.withAlpha(0.12f + shimmer * 0.3f)
+            : theme::color::stringIdle.withAlpha(0.12f);
 
         g.setColour(col);
         g.drawLine(neckArea.getX() + 10, y, neckArea.getRight() - 10, y, 0.5f);
@@ -277,13 +391,12 @@ void VeenaVisualization::drawFingerPosition(juce::Graphics& g, juce::Rectangle<f
     if (activeNote < 0)
         return;
 
-    // Finger dot at the fret position of the active note.
     float fretSpacing = neckArea.getWidth() / static_cast<float>(NUM_FRETS + 1);
     float notePosition = static_cast<float>(activeNote - BASE_MIDI_NOTE) + pitchOffset;
     notePosition = juce::jlimit(0.0f, static_cast<float>(NUM_FRETS), notePosition);
 
     float fingerX = neckArea.getX() + notePosition * fretSpacing;
-    float fingerY = neckArea.getY() + neckArea.getHeight() * 0.25f;  // on first string area
+    float fingerY = neckArea.getY() + neckArea.getHeight() * 0.25f;
 
     float amp = smoothedAmplitudes[0];
     float dotSize = 8.0f + amp * 4.0f;
