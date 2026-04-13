@@ -222,7 +222,8 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     // Dark-themed keyboard with gold highlights
     keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2A2A3E));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff151525));
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff444466));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff222238));
+    keyboardComponent.setKeyWidth(14.0f);  // tighter keys, less gap
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, theme::color::textSecondary.withAlpha(0.6f));

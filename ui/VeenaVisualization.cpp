@@ -77,9 +77,18 @@ void VeenaVisualization::paint(juce::Graphics& g)
 
 void VeenaVisualization::drawNeck(juce::Graphics& g, juce::Rectangle<float> area)
 {
-    // Neck body — dark wood-toned rectangle
-    g.setColour(theme::color::wood.withAlpha(0.15f));
-    g.fillRoundedRectangle(area.reduced(0, 8), 4.0f);
+    // Neck body — subtle gradient background darker at edges.
+    auto neckRect = area.reduced(0, 6);
+    juce::ColourGradient neckGrad(
+        theme::color::wood.withAlpha(0.12f), neckRect.getCentreX(), neckRect.getCentreY(),
+        theme::color::background.withAlpha(0.3f), neckRect.getCentreX(), neckRect.getY(), true);
+    g.setGradientFill(neckGrad);
+    g.fillRoundedRectangle(neckRect, 4.0f);
+
+    // Subtle edge darkening for depth
+    g.setColour(theme::color::background.withAlpha(0.15f));
+    g.fillRoundedRectangle(neckRect.getX(), neckRect.getY(), neckRect.getWidth(), 6.0f, 4.0f);
+    g.fillRoundedRectangle(neckRect.getX(), neckRect.getBottom() - 6, neckRect.getWidth(), 6.0f, 4.0f);
 }
 
 void VeenaVisualization::drawFrets(juce::Graphics& g, juce::Rectangle<float> neckArea)
@@ -94,8 +103,8 @@ void VeenaVisualization::drawFrets(juce::Graphics& g, juce::Rectangle<float> nec
         int fretNote = BASE_MIDI_NOTE + i;
         bool isActive = (fretNote == activeNote);
 
-        g.setColour(isActive ? theme::color::fretActive.withAlpha(0.8f) : theme::color::fret.withAlpha(0.3f));
-        g.drawLine(fretX, neckArea.getY() + 5, fretX, neckArea.getBottom() - 5, isActive ? 2.0f : 1.0f);
+        g.setColour(isActive ? theme::color::fretActive.withAlpha(0.7f) : theme::color::fret.withAlpha(0.18f));
+        g.drawLine(fretX, neckArea.getY() + 5, fretX, neckArea.getBottom() - 5, isActive ? 1.5f : 0.5f);
 
         // Active fret glow
         if (isActive)
@@ -135,13 +144,16 @@ void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<floa
             float t = static_cast<float>(i) / static_cast<float>(segments);
             float x = startX + t * (endX - startX);
 
-            // Sine displacement: amplitude * sin(position * freq + time)
-            // Envelope: larger in the middle, zero at endpoints
+            // Catenary sag: slight downward curve, max ~2px at center.
+            // Real strings sag under gravity — this adds realism.
+            float catenary = 2.0f * std::sin(t * juce::MathConstants<float>::pi);
+
+            // Vibration displacement when active.
             float envelope = std::sin(t * juce::MathConstants<float>::pi);
             float vibration = amp * 6.0f * envelope *
                 std::sin(t * 12.0f + animPhase * (2.0f + static_cast<float>(s) * 0.3f));
 
-            stringPath.lineTo(x, stringY + vibration);
+            stringPath.lineTo(x, stringY + catenary + vibration);
         }
 
         // String color: brighter and thicker when active
@@ -150,7 +162,7 @@ void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<floa
             : theme::color::stringIdle.withAlpha(0.6f);
 
         g.setColour(stringCol);
-        g.strokePath(stringPath, juce::PathStrokeType(isActive ? 2.5f : 1.5f));
+        g.strokePath(stringPath, juce::PathStrokeType(isActive ? 3.0f : 2.0f));
 
         // Glow for active strings — wider, more prominent
         if (isActive && amp > 0.02f)
