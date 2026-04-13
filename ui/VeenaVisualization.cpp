@@ -201,9 +201,9 @@ void VeenaVisualization::drawPluckFlash(juce::Graphics& g)
         float flash = thalamFlash[i];
         if (flash < 0.05f) continue;
 
-        // Approximate thalam string positions from SVG
-        float svgX = 60.0f - static_cast<float>(i) * 6.0f;
-        float svgY = 520.0f + static_cast<float>(i) * 14.0f;
+        // Approximate thalam string midpoints from SVG
+        float svgX = 55.0f - static_cast<float>(i) * 5.0f;
+        float svgY = 590.0f + static_cast<float>(i) * 14.0f;
         auto pt = svgToComponent(svgX, svgY);
 
         float r = (8.0f + flash * 10.0f) * svgScale;

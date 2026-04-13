@@ -223,7 +223,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffEDE4D4));  // warm cream
     keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff2A2A3E));  // dark navy
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff4A4540));  // dark border between white keys
-    keyboardComponent.setKeyWidth(10.0f);  // narrow keys to fill full width without gaps
+    // Key width set dynamically in resized() to fill available width
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff8B7D5A));  // muted gold on cream
@@ -288,8 +288,12 @@ void VeenaPluginEditor::resized()
     presetCombo.setBounds(presetArea.reduced(2, 0));
     instrumentLabel->setBounds(header.reduced(10, 4));
 
-    // --- Keyboard at bottom (full width) ---
-    keyboardComponent.setBounds(area.removeFromBottom(theme::dim::keyboardHeight).reduced(0, 2));
+    // --- Keyboard at bottom (full width, key width scaled to fill) ---
+    auto kbArea = area.removeFromBottom(theme::dim::keyboardHeight).reduced(0, 2);
+    // Count white keys in range 24-108: C1 to C8 = 49 white keys
+    float kbWidth = static_cast<float>(kbArea.getWidth());
+    keyboardComponent.setKeyWidth(kbWidth / 49.0f);  // fill entire width
+    keyboardComponent.setBounds(kbArea);
 
     // --- Main body: 3 columns ---
     // LEFT (140px): String controls
