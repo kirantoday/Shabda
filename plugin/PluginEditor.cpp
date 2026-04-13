@@ -36,7 +36,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     logoLabel = std::unique_ptr<juce::Label>(makeLabel("SHABDA", 24.0f,
                                                         theme::color::gold, juce::Justification::centredLeft));
     logoLabel->setFont(juce::FontOptions(24.0f, juce::Font::bold));
-    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Veena", theme::font::subtitle,
+    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Saraswati Veena", theme::font::subtitle,
                                                               theme::color::textSecondary, juce::Justification::centred));
     addAndMakeVisible(*logoLabel);
     addAndMakeVisible(*instrumentLabel);
@@ -219,14 +219,14 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     // --- Keyboard ---
     keyboardComponent.setKeyPressBaseOctave(5);
     keyboardComponent.setAvailableRange(36, 96);
-    // Dark-themed keyboard with gold highlights
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2A2A3E));
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff151525));
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff222238));
-    keyboardComponent.setKeyWidth(14.0f);  // tighter keys, less gap
+    // Cream white keys, dark black keys, gold active highlights
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffF0E6D3));  // warm cream
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff1A1A2E));  // dark charcoal
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xffC0B8A8));  // subtle warm border
+    keyboardComponent.setKeyWidth(14.0f);
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, theme::color::textSecondary.withAlpha(0.6f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff8B7D5A));  // muted gold on cream
     keyboardComponent.setColour(juce::MidiKeyboardComponent::upDownButtonBackgroundColourId, theme::color::panelSurface);
     keyboardComponent.setColour(juce::MidiKeyboardComponent::upDownButtonArrowColourId, theme::color::gold);
     addAndMakeVisible(keyboardComponent);

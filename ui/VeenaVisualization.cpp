@@ -54,19 +54,26 @@ void VeenaVisualization::paint(juce::Graphics& g)
         theme::color::background, bounds.getCentreX(), bounds.getBottom(), false));
     g.fillRoundedRectangle(bounds, static_cast<float>(theme::dim::panelRadius));
 
+    // Drop shadow under the visualization panel for depth
+    g.setColour(juce::Colour(0x25000000));
+    g.fillRoundedRectangle(bounds.translated(0, 3).reduced(-1, -1),
+                            static_cast<float>(theme::dim::panelRadius) + 1);
+
     g.setColour(theme::color::panelBorder);
     g.drawRoundedRectangle(bounds.reduced(0.5f), static_cast<float>(theme::dim::panelRadius), 1.0f);
 
-    // Layout: neck 65%, bridge gap 2%, kudam 18%, thalam 15%
-    float kudamFrac = 0.18f;
-    float thalamFrac = 0.12f;
-    float bridgeFrac = 0.02f;
-    float neckFrac = 1.0f - kudamFrac - thalamFrac - bridgeFrac;
+    // Layout: fixed pixel splits for reliable sizing.
+    // Right side: thalam 60px, kudam 130px, bridge 14px. Rest = neck.
+    float totalW = bounds.getWidth();
+    float thalamW = 60.0f;
+    float kudamW = 130.0f;
+    float bridgeW = 14.0f;
+    float neckW = totalW - thalamW - kudamW - bridgeW;
 
-    auto neckArea = bounds.removeFromLeft(bounds.getWidth() * neckFrac).reduced(15, 20);
-    auto bridgeArea = bounds.removeFromLeft(bounds.getWidth() * (bridgeFrac / (1.0f - neckFrac))).reduced(0, 25);
-    auto thalamArea = bounds.removeFromRight(bounds.getWidth() * (thalamFrac / (kudamFrac + thalamFrac))).reduced(2, 30);
-    auto kudamArea = bounds.reduced(4, 10);
+    auto neckArea = bounds.removeFromLeft(neckW).reduced(15, 20);
+    auto bridgeArea = bounds.removeFromLeft(bridgeW).reduced(0, 25);
+    auto kudamArea = bounds.removeFromLeft(kudamW).reduced(4, 10);
+    auto thalamArea = bounds.reduced(2, 25);
 
     drawNeck(g, neckArea);
     drawFrets(g, neckArea);
@@ -82,16 +89,16 @@ void VeenaVisualization::drawNeck(juce::Graphics& g, juce::Rectangle<float> area
 {
     auto neckRect = area.reduced(0, 4);
 
-    // Wood-grain gradient background: dark brown left to medium brown right
-    // Horizontal gradient to simulate the grain direction along the neck.
+    // Polished walnut wood-grain gradient: dark walnut to medium brown.
+    // Horizontal gradient simulates the grain direction along the neck.
     juce::ColourGradient woodGrain(
-        juce::Colour(0xff2A1A0E), neckRect.getX(), neckRect.getCentreY(),       // dark brown
-        juce::Colour(0xff3D2817), neckRect.getRight(), neckRect.getCentreY(),    // medium brown
+        juce::Colour(0xff3E2723), neckRect.getX(), neckRect.getCentreY(),       // dark walnut
+        juce::Colour(0xff5D4037), neckRect.getRight(), neckRect.getCentreY(),   // medium brown
         false);
-    // Add midpoint color stops for grain variation
-    woodGrain.addColour(0.3, juce::Colour(0xff33200F));
-    woodGrain.addColour(0.6, juce::Colour(0xff382315));
-    woodGrain.addColour(0.8, juce::Colour(0xff3A2515));
+    // Add midpoint color stops for richer grain variation
+    woodGrain.addColour(0.25, juce::Colour(0xff4A3228));
+    woodGrain.addColour(0.5,  juce::Colour(0xff513830));
+    woodGrain.addColour(0.75, juce::Colour(0xff573D34));
     g.setGradientFill(woodGrain);
     g.fillRoundedRectangle(neckRect, 5.0f);
 
@@ -176,8 +183,8 @@ void VeenaVisualization::drawMainStrings(juce::Graphics& g, juce::Rectangle<floa
     // 4 main strings with different thicknesses (Sa thickest, upper Pa thinnest).
     // Real veena strings get thinner as pitch goes up.
     const char* stringNames[] = { "Sa", "Pa", "sa", "Pa" };
-    const float stringThickness[] = { 2.8f, 2.2f, 1.6f, 1.2f };       // idle thickness
-    const float stringActiveThickness[] = { 3.5f, 2.8f, 2.2f, 1.8f }; // active thickness
+    const float stringThickness[] = { 3.0f, 2.5f, 2.0f, 1.5f };       // idle thickness
+    const float stringActiveThickness[] = { 3.8f, 3.0f, 2.5f, 2.0f }; // active thickness
     float stringSpacing = neckArea.getHeight() / 5.0f;
 
     // Strings extend from neck to bridge
