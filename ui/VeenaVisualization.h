@@ -2,14 +2,10 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "Theme.h"
-#include <array>
 
-// Animated top-down visualization of the Veena.
-// Shows main strings, thalam strings, frets, kudam body, and
-// real-time feedback: string vibration, finger position, sympathetic shimmer.
-//
-// Driven by the audio thread writing state into atomic floats,
-// and a 30fps timer for smooth animation.
+// Stylized side-view illustration of the Veena at ~30 degree angle.
+// Neck upper-left → kudam lower-right (natural playing position).
+// Clean vector-style rendering with gold/navy color scheme.
 
 class VeenaVisualization : public juce::Component,
                             private juce::Timer
@@ -20,38 +16,37 @@ public:
 
     void paint(juce::Graphics& g) override;
 
-    // --- State setters (called from processor/editor, thread-safe) ---
-
-    // Main string vibration amplitude (0..1) for each of 2 polyphonic voices.
     void setStringAmplitude(int voiceIndex, float amplitude);
-
-    // Current MIDI note being played (for fret highlighting).
     void setActiveNote(int midiNote);
-
-    // Pitch offset in semitones (for finger position sliding).
     void setPitchOffset(float semitones);
-
-    // Thalam string flash (0..1, decays to 0).
     void setThalamFlash(int stringIndex, float intensity);
-
-    // Sympathetic resonance intensity (0..1).
     void setSympatheticLevel(float level);
-
-    // Peak output level (for kudam body glow).
     void setPeakLevel(float level);
 
 private:
     void timerCallback() override;
 
-    // Draw sub-components
-    void drawNeck(juce::Graphics& g, juce::Rectangle<float> area);
-    void drawFrets(juce::Graphics& g, juce::Rectangle<float> neckArea);
-    void drawBridge(juce::Graphics& g, juce::Rectangle<float> bridgeArea, juce::Rectangle<float> neckArea);
-    void drawMainStrings(juce::Graphics& g, juce::Rectangle<float> neckArea, juce::Rectangle<float> bridgeArea);
-    void drawThalamStrings(juce::Graphics& g, juce::Rectangle<float> area);
-    void drawKudam(juce::Graphics& g, juce::Rectangle<float> area, juce::Rectangle<float> bridgeArea);
-    void drawSympatheticStrings(juce::Graphics& g, juce::Rectangle<float> neckArea);
-    void drawFingerPosition(juce::Graphics& g, juce::Rectangle<float> neckArea);
+    // Coordinate helpers: map normalized 0..1 along the veena's axis
+    // to actual pixel coordinates at the 30-degree angle.
+    juce::Point<float> veenaPoint(float t, float perpOffset = 0.0f) const;
+
+    // Draw sub-elements
+    void drawShadow(juce::Graphics& g);
+    void drawNeckBeam(juce::Graphics& g);
+    void drawKudam(juce::Graphics& g);
+    void drawUpperGourd(juce::Graphics& g);
+    void drawYali(juce::Graphics& g);
+    void drawFrets(juce::Graphics& g);
+    void drawBridge(juce::Graphics& g);
+    void drawMainStrings(juce::Graphics& g);
+    void drawThalamStrings(juce::Graphics& g);
+    void drawFingerPosition(juce::Graphics& g);
+
+    // The veena's main axis: from yali (upper-left) to kudam (lower-right)
+    juce::Point<float> axisStart;  // yali end
+    juce::Point<float> axisEnd;    // kudam end
+    float axisLength = 0.0f;
+    float axisAngle = 0.0f;        // radians
 
     // Animation state
     float stringAmplitudes[2] = { 0.0f, 0.0f };
@@ -63,10 +58,8 @@ private:
     float smoothedSympathetic = 0.0f;
     float peakLevel = 0.0f;
     float smoothedPeak = 0.0f;
-
-    // Animation phase for string vibration
     float animPhase = 0.0f;
 
     static constexpr int NUM_FRETS = 24;
-    static constexpr int BASE_MIDI_NOTE = 48;  // Sa = C3
+    static constexpr int BASE_MIDI_NOTE = 48;
 };

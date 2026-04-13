@@ -219,11 +219,11 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     // --- Keyboard ---
     keyboardComponent.setKeyPressBaseOctave(5);
     keyboardComponent.setAvailableRange(36, 96);
-    // Cream white keys, dark black keys, gold active highlights
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffF0E6D3));  // warm cream
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff1A1A2E));  // dark charcoal
-    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xffC0B8A8));  // subtle warm border
-    keyboardComponent.setKeyWidth(14.0f);
+    // Individual cream white keys with thin dark gaps, dark black keys, gold highlights
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xffEDE4D4));  // warm cream
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff2A2A3E));  // dark navy
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff8A8070));  // visible dark gap
+    keyboardComponent.setKeyWidth(13.0f);
     keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
     keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, juce::Colour(0xff8B7D5A));  // muted gold on cream
