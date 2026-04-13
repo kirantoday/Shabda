@@ -150,8 +150,9 @@ The DSP engine has ZERO dependency on JUCE. Only `/plugin` and `/ui` layers depe
 - [x] IR convolution body resonance (hybrid with modal filters, synthetic default IR)
 - [ ] Multi-voice: 4 main strings playable independently or via keyswitch (deferred to Phase 3)
 
-### Phase 3: Productization (in progress)
+### Phase 3: Productization (UI complete, remaining items deferred)
 - [x] Professional UI with Indian aesthetic (custom LookAndFeel, gold/brass theme, animated visualization)
+- [x] Instrument visualization: wood-grain neck, brass bridge, variable-thickness strings, kudam body with 3D depth
 - [x] Preset system (Classic Carnatic, Film Score, Bright Pluck, Deep Meend, Devotional, Fusion)
 - [ ] VST3 / AU / AUv3 (iOS) / Standalone (VST3+Standalone done, AU/AUv3 pending)
 - [ ] MIDI mapping templates for keyboards, MPE controllers, breath controllers
