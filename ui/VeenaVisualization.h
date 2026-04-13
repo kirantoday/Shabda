@@ -3,9 +3,11 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "Theme.h"
 
-// Stylized side-view illustration of the Veena at ~30 degree angle.
-// Neck upper-left → kudam lower-right (natural playing position).
-// Clean vector-style rendering with gold/navy color scheme.
+// SVG-based visualization of the Veena with interactive overlays.
+//
+// Architecture: static SVG base (the instrument illustration) with
+// dynamic overlays painted on top (string glow, finger position,
+// pluck flash, sympathetic shimmer). This separates art from animation.
 
 class VeenaVisualization : public juce::Component,
                             private juce::Timer
@@ -15,6 +17,7 @@ public:
     ~VeenaVisualization() override;
 
     void paint(juce::Graphics& g) override;
+    void resized() override;
 
     void setStringAmplitude(int voiceIndex, float amplitude);
     void setActiveNote(int midiNote);
@@ -25,28 +28,28 @@ public:
 
 private:
     void timerCallback() override;
+    void loadSVG();
 
-    // Coordinate helpers: map normalized 0..1 along the veena's axis
-    // to actual pixel coordinates at the 30-degree angle.
-    juce::Point<float> veenaPoint(float t, float perpOffset = 0.0f) const;
+    // Map a position in SVG coordinates to component pixel coordinates.
+    juce::Point<float> svgToComponent(float svgX, float svgY) const;
 
-    // Draw sub-elements
-    void drawShadow(juce::Graphics& g);
-    void drawNeckBeam(juce::Graphics& g);
-    void drawKudam(juce::Graphics& g);
-    void drawUpperGourd(juce::Graphics& g);
-    void drawYali(juce::Graphics& g);
-    void drawFrets(juce::Graphics& g);
-    void drawBridge(juce::Graphics& g);
-    void drawMainStrings(juce::Graphics& g);
-    void drawThalamStrings(juce::Graphics& g);
+    // Map a fret/string position to component coordinates.
+    // stringIndex 0-3, fretPosition 0.0 to 1.0 along the playing range.
+    juce::Point<float> stringPosition(int stringIndex, float fretFraction) const;
+
+    // Draw interactive overlays on top of the SVG
+    void drawStringGlow(juce::Graphics& g);
     void drawFingerPosition(juce::Graphics& g);
+    void drawPluckFlash(juce::Graphics& g);
+    void drawKudamGlow(juce::Graphics& g);
 
-    // The veena's main axis: from yali (upper-left) to kudam (lower-right)
-    juce::Point<float> axisStart;  // yali end
-    juce::Point<float> axisEnd;    // kudam end
-    float axisLength = 0.0f;
-    float axisAngle = 0.0f;        // radians
+    // The SVG drawable (loaded once)
+    std::unique_ptr<juce::Drawable> svgDrawable;
+
+    // Scale/offset for SVG → component mapping
+    float svgScale = 1.0f;
+    float svgOffsetX = 0.0f;
+    float svgOffsetY = 0.0f;
 
     // Animation state
     float stringAmplitudes[2] = { 0.0f, 0.0f };
