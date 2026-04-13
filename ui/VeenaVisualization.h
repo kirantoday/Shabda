@@ -4,7 +4,7 @@
 #include "Theme.h"
 #include <array>
 
-// Animated top-down visualization of the Saraswati Veena.
+// Animated top-down visualization of the Veena.
 // Shows main strings, thalam strings, frets, kudam body, and
 // real-time feedback: string vibration, finger position, sympathetic shimmer.
 //

@@ -36,7 +36,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     logoLabel = std::unique_ptr<juce::Label>(makeLabel("SHABDA", 24.0f,
                                                         theme::color::gold, juce::Justification::centredLeft));
     logoLabel->setFont(juce::FontOptions(24.0f, juce::Font::bold));
-    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Saraswati Veena", theme::font::subtitle,
+    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Veena", theme::font::subtitle,
                                                               theme::color::textSecondary, juce::Justification::centred));
     addAndMakeVisible(*logoLabel);
     addAndMakeVisible(*instrumentLabel);

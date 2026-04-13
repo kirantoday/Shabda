@@ -11,7 +11,7 @@
 #include <array>
 #include <cstdint>
 
-// VeenaVoice: the top-level instrument class for the Saraswati Veena.
+// VeenaVoice: the top-level instrument class for the Veena.
 // This file must NOT include any JUCE headers — pure C++ only.
 //
 // ARCHITECTURE:

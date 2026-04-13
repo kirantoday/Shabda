@@ -4,7 +4,7 @@
 #include "expression/GlideEngine.h"
 #include "resonator/ModalFilter.h"
 
-// Configuration constants for the Saraswati Veena.
+// Configuration constants for the Veena.
 // This file must NOT include any JUCE headers — pure C++ only.
 //
 // All defaults here are initial guesses based on the instrument's character.
