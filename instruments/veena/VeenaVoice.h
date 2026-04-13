@@ -64,6 +64,7 @@ public:
     void setLegatoEnabled(bool enabled);
     void setGlideCurve(engine::GlideCurve curve);
     void setThalamVolume(float volume);
+    void setRagaPreset(int presetIndex);
 
     // Thalam (side drone) string trigger — independent from main voices.
     // midiNote determines which thalam string is plucked.

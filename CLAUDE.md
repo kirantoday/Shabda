@@ -147,8 +147,8 @@ The DSP engine has ZERO dependency on JUCE. Only `/plugin` and `/ui` layers depe
 - [x] Humanization (pitch/brightness/timing jitter per pluck)
 - [x] Thalam (side drone) strings with independent trigger (Z/X/C keys)
 - [ ] Multi-voice: 4 main strings playable independently or via keyswitch
+- [x] Raga-aware sympathetic tuning presets (7 ragas with UI dropdown)
 - [ ] IR convolution body resonance option (hybrid with modal filters)
-- [ ] Raga-aware presets: Shankarabharanam, Kalyani, Todi, Bhairavi, etc.
 
 ### Phase 3: Productization (future)
 - [ ] Professional UI with Indian aesthetic

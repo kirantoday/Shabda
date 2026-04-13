@@ -74,6 +74,8 @@ private:
     juce::ToggleButton legatoToggle;
     juce::ComboBox glideCurveCombo;
     juce::Label glideCurveLabel;
+    juce::ComboBox ragaCombo;
+    juce::Label ragaLabel;
 
     // --- Level meter ---
     juce::Label levelLabel;

@@ -102,6 +102,39 @@ constexpr int MAX_DELAY_SAMPLES = 4096;
 constexpr int THALAM_STRING_NOTES[] = { 48, 55, 60 };  // Sa(C3), Pa(G3), sa(C4)
 constexpr int NUM_THALAM_STRINGS = 3;
 
+// --- Raga-aware sympathetic tuning presets ---
+// Each preset defines 3 sympathetic comb filter tunings as semitone
+// offsets from Sa. The absolute MIDI notes are computed at runtime:
+//   midiNote = DEFAULT_SA_MIDI_NOTE + tuningOffset + offset[i]
+//
+// These tune the sympathetic resonance to emphasize the raga's
+// important notes (vadi/samvadi), creating a raga-specific "halo."
+// TODO(TUNE): all offsets are initial guesses — tune against recordings.
+
+constexpr int NUM_RAGA_PRESETS = 7;
+constexpr int SYMPATHETIC_NOTES_PER_PRESET = 3;
+
+struct RagaPreset
+{
+    const char* name;
+    int offsets[SYMPATHETIC_NOTES_PER_PRESET];  // semitones from Sa
+};
+
+// Carnatic swara → semitone offsets from Sa:
+//   Sa=0, Ri1=1, Ri2=2, Ga1=3, Ga2=4, Ma1=5, Ma2=6,
+//   Pa=7, Da1=8, Da2=9, Ni1=10, Ni2=11, sa=12
+
+constexpr RagaPreset RAGA_PRESETS[NUM_RAGA_PRESETS] = {
+    // TODO(TUNE): all sympathetic tunings need ear-tuning
+    { "Free",             {  0,  7, 12 } },  // Sa Pa sa — default, raga-neutral
+    { "Shankarabharanam", {  0,  4,  7 } },  // Sa Ga2 Pa — major scale vadi/samvadi
+    { "Kalyani",          {  0,  6,  7 } },  // Sa Ma2(#) Pa — lydian, prati madhyama
+    { "Todi",             {  0,  1,  3 } },  // Sa Ri1(b) Ga1(b) — heavy, somber raga
+    { "Bhairavi",         {  0,  1, 10 } },  // Sa Ri1(b) Ni1(b) — morning raga, devotional
+    { "Kharaharapriya",   {  0,  4,  7 } },  // Sa Ga2 Pa — 22nd melakarta, natural minor
+    { "Mohanam",          {  0,  4,  7 } },  // Sa Ga2 Pa — pentatonic, bright and joyful
+};
+
 // TODO(TUNE): sympathetic resonance gain — how loud the drone halo is.
 // 0.15 = subtle shimmer, 0.3 = clearly audible, 0.5+ = prominent drone.
 constexpr float DEFAULT_SYMPATHETIC_GAIN = 0.15f;

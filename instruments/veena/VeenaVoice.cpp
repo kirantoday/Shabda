@@ -374,6 +374,21 @@ void VeenaVoice::setThalamVolume(float volume)
     thalamVolume = std::clamp(volume, 0.0f, 1.0f);
 }
 
+void VeenaVoice::setRagaPreset(int presetIndex)
+{
+    if (presetIndex < 0 || presetIndex >= NUM_RAGA_PRESETS)
+        return;
+
+    const auto& preset = RAGA_PRESETS[presetIndex];
+
+    // Compute absolute MIDI notes from Sa base + raga offsets.
+    int notes[SYMPATHETIC_NOTES_PER_PRESET];
+    for (int i = 0; i < SYMPATHETIC_NOTES_PER_PRESET; ++i)
+        notes[i] = DEFAULT_SA_MIDI_NOTE + preset.offsets[i];
+
+    sympatheticBank.setTunings(notes, SYMPATHETIC_NOTES_PER_PRESET);
+}
+
 // --- Voice allocation ---
 
 int VeenaVoice::findFreeVoice() const

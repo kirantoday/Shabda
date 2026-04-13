@@ -113,6 +113,7 @@ void VeenaPluginProcessor::processBlock(juce::AudioBuffer<float>& buffer,
     veenaVoice.setBendRange(uiBendRange.load(std::memory_order_relaxed));
     veenaVoice.setLegatoEnabled(uiLegatoEnabled.load(std::memory_order_relaxed));
     veenaVoice.setGlideCurve(static_cast<engine::GlideCurve>(uiGlideCurve.load(std::memory_order_relaxed)));
+    veenaVoice.setRagaPreset(uiRagaPreset.load(std::memory_order_relaxed));
 
     // --- Render audio ---
     // VeenaVoice renders mono into the left channel.

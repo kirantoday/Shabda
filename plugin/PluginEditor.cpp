@@ -155,6 +155,19 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     glideCurveCombo.addListener(this);
     addAndMakeVisible(glideCurveCombo);
 
+    setupValueLabel(ragaLabel, "Raga:");
+    addAndMakeVisible(ragaLabel);
+    ragaCombo.addItem("Free", 1);
+    ragaCombo.addItem("Shankarabharanam", 2);
+    ragaCombo.addItem("Kalyani", 3);
+    ragaCombo.addItem("Todi", 4);
+    ragaCombo.addItem("Bhairavi", 5);
+    ragaCombo.addItem("Kharaharapriya", 6);
+    ragaCombo.addItem("Mohanam", 7);
+    ragaCombo.setSelectedId(1, juce::dontSendNotification);  // Free default
+    ragaCombo.addListener(this);
+    addAndMakeVisible(ragaCombo);
+
     // --- Level meter label ---
     setupValueLabel(levelLabel, "Level: ----");
     addAndMakeVisible(levelLabel);
@@ -281,6 +294,11 @@ void VeenaPluginEditor::resized()
     glideCurveCombo.setBounds(settingsRow2.removeFromLeft(110));
 
     rightCol.removeFromTop(4);
+    auto settingsRow3 = rightCol.removeFromTop(24);
+    ragaLabel.setBounds(settingsRow3.removeFromLeft(40));
+    ragaCombo.setBounds(settingsRow3.removeFromLeft(150));
+
+    rightCol.removeFromTop(4);
     levelLabel.setBounds(rightCol.removeFromTop(16));
 }
 
@@ -369,9 +387,13 @@ void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
     }
     else if (combo == &glideCurveCombo)
     {
-        // Combo IDs are 1-based; GlideCurve enum is 0-based.
         int curveId = glideCurveCombo.getSelectedId() - 1;
         processorRef.uiGlideCurve.store(curveId, std::memory_order_relaxed);
+    }
+    else if (combo == &ragaCombo)
+    {
+        int presetIndex = ragaCombo.getSelectedId() - 1;
+        processorRef.uiRagaPreset.store(presetIndex, std::memory_order_relaxed);
     }
 }
 

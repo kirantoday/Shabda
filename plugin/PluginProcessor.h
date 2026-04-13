@@ -61,6 +61,7 @@ public:
     std::atomic<int>   uiTuningOffset { 0 };         // semitones from C3 (0=C, 2=D, etc.)
     std::atomic<bool>  uiLegatoEnabled { true };     // legato glide on/off
     std::atomic<int>   uiGlideCurve { 1 };           // 0=Linear, 1=Exponential, 2=SCurve, 3=Late
+    std::atomic<int>   uiRagaPreset { 0 };           // index into RAGA_PRESETS (0=Free)
 
     // Peak level for the meter (written by audio thread, read by editor)
     std::atomic<float> peakLevel { 0.0f };
