@@ -50,6 +50,8 @@ target_sources(VeenaPlugin PRIVATE
     plugin/PluginEditor.h
     instruments/veena/VeenaVoice.cpp
     instruments/veena/VeenaVoice.h
+    ui/VeenaLookAndFeel.cpp
+    ui/VeenaVisualization.cpp
 )
 
 target_include_directories(VeenaPlugin PRIVATE

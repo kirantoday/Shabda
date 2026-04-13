@@ -1,162 +1,179 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 
-namespace {
-    void setupGroupLabel(juce::Label& label, const juce::String& text)
-    {
-        label.setText(text, juce::dontSendNotification);
-        label.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-        label.setJustificationType(juce::Justification::centredLeft);
-        label.setColour(juce::Label::textColourId, juce::Colour(0xffcccccc));
-    }
-
-    void setupValueLabel(juce::Label& label, const juce::String& text)
-    {
-        label.setText(text, juce::dontSendNotification);
-        label.setFont(juce::FontOptions(12.0f));
-        label.setJustificationType(juce::Justification::centredLeft);
-        label.setColour(juce::Label::textColourId, juce::Colour(0xff999999));
-    }
-
-    void setupSlider(juce::Slider& slider, double min, double max, double defaultVal,
-                     double step = 0.01)
-    {
-        slider.setSliderStyle(juce::Slider::LinearHorizontal);
-        slider.setRange(min, max, step);
-        slider.setValue(defaultVal, juce::dontSendNotification);
-        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    }
+// --- Helper: create knob with common settings ---
+static void setupKnob(juce::Slider& knob, double min, double max, double defaultVal, double step = 0.01)
+{
+    knob.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+    knob.setRange(min, max, step);
+    knob.setValue(defaultVal, juce::dontSendNotification);
+    knob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
 }
+
+static void setupVerticalStrip(juce::Slider& strip, double min, double max, double defaultVal)
+{
+    strip.setSliderStyle(juce::Slider::LinearVertical);
+    strip.setRange(min, max, 0.001);
+    strip.setValue(defaultVal, juce::dontSendNotification);
+    strip.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+}
+
+static void setupCombo(juce::ComboBox& combo)
+{
+    combo.setJustificationType(juce::Justification::centredLeft);
+}
+
+// --- Constructor ---
 
 VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     : AudioProcessorEditor(&p),
       processorRef(p),
       keyboardComponent(p.keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard)
 {
-    // Title
-    titleLabel.setText("Veena", juce::dontSendNotification);
-    titleLabel.setFont(juce::FontOptions(26.0f, juce::Font::bold));
-    titleLabel.setJustificationType(juce::Justification::centred);
-    titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);
-    addAndMakeVisible(titleLabel);
+    setLookAndFeel(&veenaLnF);
+
+    // --- Header ---
+    logoLabel = std::unique_ptr<juce::Label>(makeLabel("SHABDA", 24.0f,
+                                                        theme::color::gold, juce::Justification::centredLeft));
+    logoLabel->setFont(juce::FontOptions(24.0f, juce::Font::bold));
+    instrumentLabel = std::unique_ptr<juce::Label>(makeLabel("Saraswati Veena", theme::font::subtitle,
+                                                              theme::color::textSecondary, juce::Justification::centred));
+    addAndMakeVisible(*logoLabel);
+    addAndMakeVisible(*instrumentLabel);
+
+    // Preset selector
+    setupCombo(presetCombo);
+    presetCombo.addItem("Classic Carnatic", 1);
+    presetCombo.addItem("Film Score", 2);
+    presetCombo.addItem("Bright Pluck", 3);
+    presetCombo.addItem("Deep Meend", 4);
+    presetCombo.addItem("Devotional", 5);
+    presetCombo.addItem("Fusion", 6);
+    presetCombo.setSelectedId(1, juce::dontSendNotification);
+    addAndMakeVisible(presetCombo);
+
+    presetPrev.setColour(juce::TextButton::buttonColourId, theme::color::panelSurface);
+    presetPrev.setColour(juce::TextButton::textColourOffId, theme::color::gold);
+    presetPrev.onClick = [this]() {
+        int id = presetCombo.getSelectedId();
+        if (id > 1) presetCombo.setSelectedId(id - 1);
+    };
+    addAndMakeVisible(presetPrev);
+
+    presetNext.setColour(juce::TextButton::buttonColourId, theme::color::panelSurface);
+    presetNext.setColour(juce::TextButton::textColourOffId, theme::color::gold);
+    presetNext.onClick = [this]() {
+        int id = presetCombo.getSelectedId();
+        if (id < presetCombo.getNumItems()) presetCombo.setSelectedId(id + 1);
+    };
+    addAndMakeVisible(presetNext);
+
+    // --- Visualization ---
+    addAndMakeVisible(visualization);
 
     // --- String controls ---
-    setupGroupLabel(stringGroupLabel, "String");
-    addAndMakeVisible(stringGroupLabel);
+    stringGroupLabel = std::unique_ptr<juce::Label>(
+        makeLabel("STRING", theme::font::groupHeader, theme::color::textSecondary));
+    addAndMakeVisible(*stringGroupLabel);
 
-    setupSlider(pluckPositionSlider, 0.05, 0.5, 0.15);
-    pluckPositionSlider.addListener(this);
-    addAndMakeVisible(pluckPositionSlider);
-    setupValueLabel(pluckPositionLabel, "Pluck Pos: 0.15");
-    addAndMakeVisible(pluckPositionLabel);
+    setupKnob(pluckPositionKnob, 0.05, 0.5, 0.15);
+    pluckPositionKnob.addListener(this);
+    addAndMakeVisible(pluckPositionKnob);
+    pluckPosLabel = std::unique_ptr<juce::Label>(makeLabel("Position", theme::font::label, theme::color::textSecondary));
+    pluckPosValue = std::unique_ptr<juce::Label>(makeLabel("0.15", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*pluckPosLabel);
+    addAndMakeVisible(*pluckPosValue);
 
-    setupSlider(dampingSlider, 0.0, 0.95, 0.4);
-    dampingSlider.addListener(this);
-    addAndMakeVisible(dampingSlider);
-    setupValueLabel(dampingLabel, "Damping: 0.40");
-    addAndMakeVisible(dampingLabel);
+    setupKnob(dampingKnob, 0.0, 0.95, 0.4);
+    dampingKnob.addListener(this);
+    addAndMakeVisible(dampingKnob);
+    dampingLabel = std::unique_ptr<juce::Label>(makeLabel("Damping", theme::font::label, theme::color::textSecondary));
+    dampingValue = std::unique_ptr<juce::Label>(makeLabel("0.40", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*dampingLabel);
+    addAndMakeVisible(*dampingValue);
 
-    setupSlider(brightnessSlider, 0.0, 1.0, 0.65);
-    brightnessSlider.addListener(this);
-    addAndMakeVisible(brightnessSlider);
-    setupValueLabel(brightnessLabel, "Brightness: 0.65");
-    addAndMakeVisible(brightnessLabel);
-
-    // --- Body & resonance ---
-    setupGroupLabel(bodyGroupLabel, "Body & Resonance");
-    addAndMakeVisible(bodyGroupLabel);
-
-    setupSlider(bodyMixSlider, 0.0, 1.0, 0.5);
-    bodyMixSlider.addListener(this);
-    addAndMakeVisible(bodyMixSlider);
-    setupValueLabel(bodyMixLabel, "Body Mix: 0.50");
-    addAndMakeVisible(bodyMixLabel);
-
-    setupSlider(sympatheticSlider, 0.0, 0.5, 0.15);
-    sympatheticSlider.addListener(this);
-    addAndMakeVisible(sympatheticSlider);
-    setupValueLabel(sympatheticLabel, "Sympathetic: 0.15");
-    addAndMakeVisible(sympatheticLabel);
-
-    // --- Thalam ---
-    setupGroupLabel(thalamGroupLabel, "Thalam (Z/X/C)");
-    addAndMakeVisible(thalamGroupLabel);
-
-    setupSlider(thalamVolumeSlider, 0.0, 1.0, 0.6);
-    thalamVolumeSlider.addListener(this);
-    addAndMakeVisible(thalamVolumeSlider);
-    setupValueLabel(thalamVolumeLabel, "Volume: 0.60");
-    addAndMakeVisible(thalamVolumeLabel);
-
-    setupValueLabel(thalamHintLabel, "Z=Sa  X=Pa  C=sa");
-    addAndMakeVisible(thalamHintLabel);
+    setupKnob(brightnessKnob, 0.0, 1.0, 0.65);
+    brightnessKnob.addListener(this);
+    addAndMakeVisible(brightnessKnob);
+    brightnessLabel = std::unique_ptr<juce::Label>(makeLabel("Bright", theme::font::label, theme::color::textSecondary));
+    brightnessValue = std::unique_ptr<juce::Label>(makeLabel("0.65", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*brightnessLabel);
+    addAndMakeVisible(*brightnessValue);
 
     // --- Expression controls ---
-    setupGroupLabel(exprGroupLabel, "Performance");
-    addAndMakeVisible(exprGroupLabel);
+    exprGroupLabel = std::unique_ptr<juce::Label>(
+        makeLabel("EXPRESSION", theme::font::groupHeader, theme::color::textSecondary));
+    addAndMakeVisible(*exprGroupLabel);
 
-    setupSlider(pitchBendSlider, -1.0, 1.0, 0.0, 0.001);
-    pitchBendSlider.setDoubleClickReturnValue(true, 0.0);
-    pitchBendSlider.addListener(this);
-    addAndMakeVisible(pitchBendSlider);
-    setupValueLabel(pitchBendLabel, "Pitch Bend: 0.0 st");
-    addAndMakeVisible(pitchBendLabel);
+    setupVerticalStrip(pitchBendStrip, -1.0, 1.0, 0.0);
+    pitchBendStrip.setDoubleClickReturnValue(true, 0.0);
+    pitchBendStrip.addListener(this);
+    addAndMakeVisible(pitchBendStrip);
+    pitchBendLabel = std::unique_ptr<juce::Label>(makeLabel("Bend", theme::font::label, theme::color::textSecondary));
+    pitchBendValue = std::unique_ptr<juce::Label>(makeLabel("0.0", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*pitchBendLabel);
+    addAndMakeVisible(*pitchBendValue);
 
-    setupSlider(vibratoSlider, 0.0, 1.0, 0.0);
-    vibratoSlider.addListener(this);
-    addAndMakeVisible(vibratoSlider);
-    setupValueLabel(vibratoLabel, "Vibrato: 0.00 st");
-    addAndMakeVisible(vibratoLabel);
+    setupKnob(vibratoKnob, 0.0, 1.0, 0.0);
+    vibratoKnob.addListener(this);
+    addAndMakeVisible(vibratoKnob);
+    vibratoLabel = std::unique_ptr<juce::Label>(makeLabel("Vibrato", theme::font::label, theme::color::textSecondary));
+    vibratoValue = std::unique_ptr<juce::Label>(makeLabel("0.00", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*vibratoLabel);
+    addAndMakeVisible(*vibratoValue);
 
-    setupSlider(expressionSlider, 0.0, 1.0, 1.0);
-    expressionSlider.addListener(this);
-    addAndMakeVisible(expressionSlider);
-    setupValueLabel(expressionLabel, "Expression: 100%");
-    addAndMakeVisible(expressionLabel);
+    setupVerticalStrip(expressionStrip, 0.0, 1.0, 1.0);
+    expressionStrip.addListener(this);
+    addAndMakeVisible(expressionStrip);
+    expressionLabel = std::unique_ptr<juce::Label>(makeLabel("Expr", theme::font::label, theme::color::textSecondary));
+    expressionValue = std::unique_ptr<juce::Label>(makeLabel("100%", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*expressionLabel);
+    addAndMakeVisible(*expressionValue);
 
-    // --- Settings ---
-    setupGroupLabel(settingsGroupLabel, "Settings");
-    addAndMakeVisible(settingsGroupLabel);
+    // --- Resonance & Settings ---
+    resonGroupLabel = std::unique_ptr<juce::Label>(
+        makeLabel("RESONANCE", theme::font::groupHeader, theme::color::textSecondary));
+    addAndMakeVisible(*resonGroupLabel);
 
-    setupValueLabel(bendRangeLabel, "Bend Range:");
-    addAndMakeVisible(bendRangeLabel);
-    for (int i = 1; i <= 12; ++i)
-        bendRangeCombo.addItem(juce::String(i) + " st", i);
-    bendRangeCombo.setSelectedId(7, juce::dontSendNotification);
-    bendRangeCombo.addListener(this);
-    addAndMakeVisible(bendRangeCombo);
+    setupKnob(bodyMixKnob, 0.0, 1.0, 0.5);
+    bodyMixKnob.addListener(this);
+    addAndMakeVisible(bodyMixKnob);
+    bodyMixLabel = std::unique_ptr<juce::Label>(makeLabel("Body", theme::font::label, theme::color::textSecondary));
+    bodyMixValue = std::unique_ptr<juce::Label>(makeLabel("0.50", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*bodyMixLabel);
+    addAndMakeVisible(*bodyMixValue);
 
-    setupValueLabel(tuningLabel, "Tuning (Sa):");
-    addAndMakeVisible(tuningLabel);
-    const char* noteNames[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-    for (int i = 0; i < 12; ++i)
-        tuningCombo.addItem(juce::String("Sa = ") + noteNames[i] + "3", i + 1);
-    tuningCombo.setSelectedId(1, juce::dontSendNotification);  // C3 default
-    tuningCombo.addListener(this);
-    addAndMakeVisible(tuningCombo);
+    setupKnob(sympatheticKnob, 0.0, 0.5, 0.15);
+    sympatheticKnob.addListener(this);
+    addAndMakeVisible(sympatheticKnob);
+    sympatheticLabel = std::unique_ptr<juce::Label>(makeLabel("Sympath", theme::font::label, theme::color::textSecondary));
+    sympatheticValue = std::unique_ptr<juce::Label>(makeLabel("0.15", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*sympatheticLabel);
+    addAndMakeVisible(*sympatheticValue);
 
-    legatoToggle.setButtonText("Legato");
-    legatoToggle.setToggleState(true, juce::dontSendNotification);
-    legatoToggle.setColour(juce::ToggleButton::textColourId, juce::Colour(0xffaaaaaa));
-    legatoToggle.setColour(juce::ToggleButton::tickColourId, juce::Colour(0xff44cc66));
-    legatoToggle.onClick = [this]()
-    {
-        processorRef.uiLegatoEnabled.store(legatoToggle.getToggleState(), std::memory_order_relaxed);
-    };
-    addAndMakeVisible(legatoToggle);
+    setupKnob(thalamKnob, 0.0, 1.0, 0.6);
+    thalamKnob.addListener(this);
+    addAndMakeVisible(thalamKnob);
+    thalamLabel = std::unique_ptr<juce::Label>(makeLabel("Thalam", theme::font::label, theme::color::textSecondary));
+    thalamValue = std::unique_ptr<juce::Label>(makeLabel("0.60", theme::font::value, theme::color::textValue));
+    addAndMakeVisible(*thalamLabel);
+    addAndMakeVisible(*thalamValue);
 
-    setupValueLabel(glideCurveLabel, "Glide:");
-    addAndMakeVisible(glideCurveLabel);
-    glideCurveCombo.addItem("Linear", 1);
-    glideCurveCombo.addItem("Exponential", 2);
-    glideCurveCombo.addItem("S-Curve", 3);
-    glideCurveCombo.addItem("Late", 4);
-    glideCurveCombo.setSelectedId(2, juce::dontSendNotification);  // Exponential default
-    glideCurveCombo.addListener(this);
-    addAndMakeVisible(glideCurveCombo);
+    settingsGroupLabel = std::unique_ptr<juce::Label>(
+        makeLabel("SETTINGS", theme::font::groupHeader, theme::color::textSecondary,
+                  juce::Justification::centredLeft));
+    addAndMakeVisible(*settingsGroupLabel);
 
-    setupValueLabel(ragaLabel, "Raga:");
-    addAndMakeVisible(ragaLabel);
+    // Combo boxes
+    setupCombo(bodyModeCombo);
+    bodyModeCombo.addItem("Modal Filters", 1);
+    bodyModeCombo.addItem("Convolution", 2);
+    bodyModeCombo.addItem("Hybrid", 3);
+    bodyModeCombo.setSelectedId(3, juce::dontSendNotification);
+    bodyModeCombo.addListener(this);
+    addAndMakeVisible(bodyModeCombo);
+
+    setupCombo(ragaCombo);
     ragaCombo.addItem("Free", 1);
     ragaCombo.addItem("Shankarabharanam", 2);
     ragaCombo.addItem("Kalyani", 3);
@@ -164,263 +181,309 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     ragaCombo.addItem("Bhairavi", 5);
     ragaCombo.addItem("Kharaharapriya", 6);
     ragaCombo.addItem("Mohanam", 7);
-    ragaCombo.setSelectedId(1, juce::dontSendNotification);  // Free default
+    ragaCombo.setSelectedId(1, juce::dontSendNotification);
     ragaCombo.addListener(this);
     addAndMakeVisible(ragaCombo);
 
-    setupValueLabel(bodyModeLabel, "Body:");
-    addAndMakeVisible(bodyModeLabel);
-    bodyModeCombo.addItem("Modal Filters", 1);
-    bodyModeCombo.addItem("Convolution", 2);
-    bodyModeCombo.addItem("Hybrid", 3);
-    bodyModeCombo.setSelectedId(3, juce::dontSendNotification);  // Hybrid default
-    bodyModeCombo.addListener(this);
-    addAndMakeVisible(bodyModeCombo);
+    setupCombo(tuningCombo);
+    const char* noteNames[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    for (int i = 0; i < 12; ++i)
+        tuningCombo.addItem(juce::String("Sa=") + noteNames[i] + "3", i + 1);
+    tuningCombo.setSelectedId(1, juce::dontSendNotification);
+    tuningCombo.addListener(this);
+    addAndMakeVisible(tuningCombo);
 
-    // --- Level meter label ---
-    setupValueLabel(levelLabel, "Level: ----");
-    addAndMakeVisible(levelLabel);
+    setupCombo(bendRangeCombo);
+    for (int i = 1; i <= 12; ++i)
+        bendRangeCombo.addItem(juce::String(i) + "st", i);
+    bendRangeCombo.setSelectedId(7, juce::dontSendNotification);
+    bendRangeCombo.addListener(this);
+    addAndMakeVisible(bendRangeCombo);
+
+    setupCombo(glideCurveCombo);
+    glideCurveCombo.addItem("Linear", 1);
+    glideCurveCombo.addItem("Exponential", 2);
+    glideCurveCombo.addItem("S-Curve", 3);
+    glideCurveCombo.addItem("Late", 4);
+    glideCurveCombo.setSelectedId(2, juce::dontSendNotification);
+    glideCurveCombo.addListener(this);
+    addAndMakeVisible(glideCurveCombo);
+
+    legatoToggle.setButtonText("Legato");
+    legatoToggle.setToggleState(true, juce::dontSendNotification);
+    legatoToggle.onClick = [this]() {
+        processorRef.uiLegatoEnabled.store(legatoToggle.getToggleState(), std::memory_order_relaxed);
+    };
+    addAndMakeVisible(legatoToggle);
 
     // --- Keyboard ---
     keyboardComponent.setKeyPressBaseOctave(5);
     keyboardComponent.setAvailableRange(36, 96);
+    // Dark-themed keyboard with gold highlights
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour(0xff2A2A3E));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour(0xff151525));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour(0xff444466));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId, theme::color::gold.withAlpha(0.35f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, theme::color::gold.withAlpha(0.12f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::textLabelColourId, theme::color::textSecondary.withAlpha(0.6f));
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::upDownButtonBackgroundColourId, theme::color::panelSurface);
+    keyboardComponent.setColour(juce::MidiKeyboardComponent::upDownButtonArrowColourId, theme::color::gold);
     addAndMakeVisible(keyboardComponent);
 
-    setSize(780, 630);
+    setSize(theme::dim::windowWidth, theme::dim::windowHeight);
     setWantsKeyboardFocus(true);
-
-    // Start timer for level meter updates (30 fps).
     startTimerHz(30);
-
     keyboardComponent.grabKeyboardFocus();
 }
 
 VeenaPluginEditor::~VeenaPluginEditor()
 {
     stopTimer();
+    setLookAndFeel(nullptr);
 }
 
 void VeenaPluginEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff1a1a2e));
+    g.fillAll(theme::color::background);
 
-    // Draw level meter bar
-    auto meterArea = levelLabel.getBounds().translated(0, 18).withHeight(8).reduced(2, 0);
-    g.setColour(juce::Colour(0xff333355));
-    g.fillRect(meterArea);
+    // Header background
+    auto headerArea = getLocalBounds().removeFromTop(theme::dim::headerHeight).toFloat();
+    g.setColour(theme::color::panelSurface);
+    g.fillRect(headerArea);
+    g.setColour(theme::color::panelBorder);
+    g.drawLine(headerArea.getX(), headerArea.getBottom(),
+               headerArea.getRight(), headerArea.getBottom(), 1.0f);
 
-    float meterWidth = static_cast<float>(meterArea.getWidth()) * std::min(currentPeak, 1.0f);
-    if (currentPeak > 0.8f)
-        g.setColour(juce::Colour(0xffff6644));
-    else if (currentPeak > 0.5f)
-        g.setColour(juce::Colour(0xffffcc44));
-    else
-        g.setColour(juce::Colour(0xff44cc66));
-    g.fillRect(meterArea.withWidth(static_cast<int>(meterWidth)));
+    // Level meter in header (right side)
+    float meterW = 80.0f;
+    float meterH = 6.0f;
+    float meterX = headerArea.getRight() - meterW - 15.0f;
+    float meterY = headerArea.getCentreY() - meterH * 0.5f;
+
+    g.setColour(theme::color::knobRing);
+    g.fillRoundedRectangle(meterX, meterY, meterW, meterH, 3.0f);
+
+    float meterFill = meterW * juce::jmin(currentPeak, 1.0f);
+    juce::Colour meterCol = (currentPeak > 0.8f) ? theme::color::alert
+                           : (currentPeak > 0.5f) ? theme::color::meterMid
+                           : theme::color::safe;
+    g.setColour(meterCol);
+    g.fillRoundedRectangle(meterX, meterY, meterFill, meterH, 3.0f);
 }
 
 void VeenaPluginEditor::resized()
 {
     auto area = getLocalBounds();
+    int pad = theme::dim::padding;
 
-    titleLabel.setBounds(area.removeFromTop(35));
+    // --- Header ---
+    auto header = area.removeFromTop(theme::dim::headerHeight);
+    logoLabel->setBounds(header.removeFromLeft(130).reduced(pad, 2));
 
-    // Keyboard at bottom
-    auto keyboardArea = area.removeFromBottom(100).reduced(8, 4);
-    keyboardComponent.setBounds(keyboardArea);
+    // Preset selector on the right
+    auto presetArea = header.removeFromRight(200).reduced(4, 6);
+    presetPrev.setBounds(presetArea.removeFromLeft(24));
+    presetNext.setBounds(presetArea.removeFromRight(24));
+    presetCombo.setBounds(presetArea.reduced(2, 0));
 
-    // Two columns for controls
-    auto controlArea = area.reduced(12, 4);
-    int colWidth = controlArea.getWidth() / 2;
-    auto leftCol = controlArea.removeFromLeft(colWidth).reduced(4, 0);
-    auto rightCol = controlArea.reduced(4, 0);
+    instrumentLabel->setBounds(header.reduced(10, 4));
 
-    int rowH = 30;  // slider row height
-    int groupH = 22; // group label height
+    // --- Keyboard at bottom ---
+    keyboardComponent.setBounds(area.removeFromBottom(theme::dim::keyboardHeight).reduced(pad, 2));
 
-    // --- Left column: String + Body ---
+    // --- Visualization ---
+    visualization.setBounds(area.removeFromTop(theme::dim::vizHeight).reduced(pad, 4));
 
-    stringGroupLabel.setBounds(leftCol.removeFromTop(groupH));
+    // --- Controls area (3 columns) ---
+    auto controls = area.reduced(pad, 2);
+    int colWidth = controls.getWidth() / 3;
+    auto leftCol = controls.removeFromLeft(colWidth);
+    auto midCol = controls.removeFromLeft(colWidth);
+    auto rightCol = controls;
 
-    pluckPositionLabel.setBounds(leftCol.removeFromTop(16));
-    pluckPositionSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(2);
+    int knobSize = theme::dim::knobSize;
+    int knobRow = knobSize + 30;  // knob + label + value
 
-    dampingLabel.setBounds(leftCol.removeFromTop(16));
-    dampingSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(2);
+    // --- Left column: STRING knobs ---
+    stringGroupLabel->setBounds(leftCol.removeFromTop(18));
+    leftCol.removeFromTop(4);
 
-    brightnessLabel.setBounds(leftCol.removeFromTop(16));
-    brightnessSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(8);
+    auto pluckArea = leftCol.removeFromTop(knobRow);
+    pluckPositionKnob.setBounds(pluckArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    pluckPosLabel->setBounds(pluckArea.removeFromTop(14));
+    pluckPosValue->setBounds(pluckArea.removeFromTop(14));
 
-    bodyGroupLabel.setBounds(leftCol.removeFromTop(groupH));
+    auto dampArea = leftCol.removeFromTop(knobRow);
+    dampingKnob.setBounds(dampArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    dampingLabel->setBounds(dampArea.removeFromTop(14));
+    dampingValue->setBounds(dampArea.removeFromTop(14));
 
-    bodyMixLabel.setBounds(leftCol.removeFromTop(16));
-    bodyMixSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(2);
+    auto brightArea = leftCol.removeFromTop(knobRow);
+    brightnessKnob.setBounds(brightArea.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    brightnessLabel->setBounds(brightArea.removeFromTop(14));
+    brightnessValue->setBounds(brightArea.removeFromTop(14));
 
-    sympatheticLabel.setBounds(leftCol.removeFromTop(16));
-    sympatheticSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(8);
+    // --- Middle column: EXPRESSION ---
+    exprGroupLabel->setBounds(midCol.removeFromTop(18));
+    midCol.removeFromTop(4);
 
-    thalamGroupLabel.setBounds(leftCol.removeFromTop(groupH));
-    thalamVolumeLabel.setBounds(leftCol.removeFromTop(16));
-    thalamVolumeSlider.setBounds(leftCol.removeFromTop(rowH - 10).reduced(0, 2));
-    leftCol.removeFromTop(2);
-    thalamHintLabel.setBounds(leftCol.removeFromTop(14));
+    // Pitch bend strip, vibrato knob, expression strip — side by side
+    auto exprRow = midCol.removeFromTop(theme::dim::stripHeight + 30);
+    int stripW = theme::dim::stripWidth;
+    int exprColW = exprRow.getWidth() / 3;
 
-    // --- Right column: Performance + Settings ---
+    auto bendCol = exprRow.removeFromLeft(exprColW);
+    pitchBendStrip.setBounds(bendCol.removeFromTop(theme::dim::stripHeight).withSizeKeepingCentre(stripW, theme::dim::stripHeight));
+    pitchBendLabel->setBounds(bendCol.removeFromTop(14));
+    pitchBendValue->setBounds(bendCol.removeFromTop(14));
 
-    exprGroupLabel.setBounds(rightCol.removeFromTop(groupH));
+    auto vibCol = exprRow.removeFromLeft(exprColW);
+    vibratoKnob.setBounds(vibCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    vibCol.removeFromTop(theme::dim::stripHeight - knobSize);  // align with strips
+    vibratoLabel->setBounds(vibCol.removeFromTop(14));
+    vibratoValue->setBounds(vibCol.removeFromTop(14));
 
-    expressionLabel.setBounds(rightCol.removeFromTop(16));
-    expressionSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
+    auto exprCol = exprRow;
+    expressionStrip.setBounds(exprCol.removeFromTop(theme::dim::stripHeight).withSizeKeepingCentre(stripW, theme::dim::stripHeight));
+    expressionLabel->setBounds(exprCol.removeFromTop(14));
+    expressionValue->setBounds(exprCol.removeFromTop(14));
+
+    // --- Right column: RESONANCE knobs + SETTINGS combos ---
+    resonGroupLabel->setBounds(rightCol.removeFromTop(18));
+    rightCol.removeFromTop(4);
+
+    // 3 knobs in a row
+    auto knobRowArea = rightCol.removeFromTop(knobRow);
+    int rknobW = knobRowArea.getWidth() / 3;
+
+    auto bodyCol = knobRowArea.removeFromLeft(rknobW);
+    bodyMixKnob.setBounds(bodyCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    bodyMixLabel->setBounds(bodyCol.removeFromTop(14));
+    bodyMixValue->setBounds(bodyCol.removeFromTop(14));
+
+    auto sympCol = knobRowArea.removeFromLeft(rknobW);
+    sympatheticKnob.setBounds(sympCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    sympatheticLabel->setBounds(sympCol.removeFromTop(14));
+    sympatheticValue->setBounds(sympCol.removeFromTop(14));
+
+    auto thalCol = knobRowArea;
+    thalamKnob.setBounds(thalCol.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+    thalamLabel->setBounds(thalCol.removeFromTop(14));
+    thalamValue->setBounds(thalCol.removeFromTop(14));
+
+    rightCol.removeFromTop(6);
+    settingsGroupLabel->setBounds(rightCol.removeFromTop(16));
     rightCol.removeFromTop(2);
 
-    pitchBendLabel.setBounds(rightCol.removeFromTop(16));
-    pitchBendSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
-    rightCol.removeFromTop(2);
+    // Settings combos: 2 per row
+    int comboW = (rightCol.getWidth() - 8) / 2;
+    int comboH = theme::dim::comboHeight;
 
-    vibratoLabel.setBounds(rightCol.removeFromTop(16));
-    vibratoSlider.setBounds(rightCol.removeFromTop(rowH - 10).reduced(0, 2));
-    rightCol.removeFromTop(8);
+    auto srow1 = rightCol.removeFromTop(comboH + 2);
+    bodyModeCombo.setBounds(srow1.removeFromLeft(comboW));
+    srow1.removeFromLeft(8);
+    ragaCombo.setBounds(srow1.removeFromLeft(comboW));
 
-    settingsGroupLabel.setBounds(rightCol.removeFromTop(groupH));
+    rightCol.removeFromTop(3);
+    auto srow2 = rightCol.removeFromTop(comboH + 2);
+    tuningCombo.setBounds(srow2.removeFromLeft(comboW));
+    srow2.removeFromLeft(8);
+    bendRangeCombo.setBounds(srow2.removeFromLeft(comboW));
 
-    auto settingsRow1 = rightCol.removeFromTop(26);
-    bendRangeLabel.setBounds(settingsRow1.removeFromLeft(80));
-    bendRangeCombo.setBounds(settingsRow1.removeFromLeft(80));
-    settingsRow1.removeFromLeft(10);
-    tuningLabel.setBounds(settingsRow1.removeFromLeft(75));
-    tuningCombo.setBounds(settingsRow1.removeFromLeft(100));
-
-    rightCol.removeFromTop(4);
-    auto settingsRow2 = rightCol.removeFromTop(24);
-    legatoToggle.setBounds(settingsRow2.removeFromLeft(80));
-    settingsRow2.removeFromLeft(10);
-    glideCurveLabel.setBounds(settingsRow2.removeFromLeft(40));
-    glideCurveCombo.setBounds(settingsRow2.removeFromLeft(110));
-
-    rightCol.removeFromTop(4);
-    auto settingsRow3 = rightCol.removeFromTop(24);
-    ragaLabel.setBounds(settingsRow3.removeFromLeft(40));
-    ragaCombo.setBounds(settingsRow3.removeFromLeft(150));
-
-    rightCol.removeFromTop(4);
-    auto settingsRow4 = rightCol.removeFromTop(24);
-    bodyModeLabel.setBounds(settingsRow4.removeFromLeft(40));
-    bodyModeCombo.setBounds(settingsRow4.removeFromLeft(120));
-
-    rightCol.removeFromTop(4);
-    levelLabel.setBounds(rightCol.removeFromTop(16));
+    rightCol.removeFromTop(3);
+    auto srow3 = rightCol.removeFromTop(comboH + 2);
+    glideCurveCombo.setBounds(srow3.removeFromLeft(comboW));
+    srow3.removeFromLeft(8);
+    legatoToggle.setBounds(srow3);
 }
+
+// --- Slider callbacks ---
 
 void VeenaPluginEditor::sliderValueChanged(juce::Slider* slider)
 {
     float val = static_cast<float>(slider->getValue());
 
-    if (slider == &pluckPositionSlider)
+    if (slider == &pluckPositionKnob)
     {
         processorRef.uiPluckPosition.store(val, std::memory_order_relaxed);
-        pluckPositionLabel.setText("Pluck Pos: " + juce::String(val, 2), juce::dontSendNotification);
+        pluckPosValue->setText(juce::String(val, 2), juce::dontSendNotification);
     }
-    else if (slider == &dampingSlider)
+    else if (slider == &dampingKnob)
     {
         processorRef.uiDamping.store(val, std::memory_order_relaxed);
-        dampingLabel.setText("Damping: " + juce::String(val, 2), juce::dontSendNotification);
+        dampingValue->setText(juce::String(val, 2), juce::dontSendNotification);
     }
-    else if (slider == &brightnessSlider)
+    else if (slider == &brightnessKnob)
     {
         processorRef.uiBrightness.store(val, std::memory_order_relaxed);
-        brightnessLabel.setText("Brightness: " + juce::String(val, 2), juce::dontSendNotification);
+        brightnessValue->setText(juce::String(val, 2), juce::dontSendNotification);
     }
-    else if (slider == &bodyMixSlider)
-    {
-        processorRef.uiBodyMix.store(val, std::memory_order_relaxed);
-        bodyMixLabel.setText("Body Mix: " + juce::String(val, 2), juce::dontSendNotification);
-    }
-    else if (slider == &sympatheticSlider)
-    {
-        processorRef.uiSympathetic.store(val, std::memory_order_relaxed);
-        sympatheticLabel.setText("Sympathetic: " + juce::String(val, 2), juce::dontSendNotification);
-    }
-    else if (slider == &pitchBendSlider)
+    else if (slider == &pitchBendStrip)
     {
         processorRef.uiPitchBend.store(val, std::memory_order_relaxed);
-        float semitones = val * processorRef.getBendRangeSemitones();
-        juce::String text = "Pitch Bend: ";
-        if (semitones >= 0.0f) text += "+";
-        text += juce::String(semitones, 1) + " st";
-        pitchBendLabel.setText(text, juce::dontSendNotification);
+        float st = val * processorRef.getBendRangeSemitones();
+        pitchBendValue->setText((st >= 0 ? "+" : "") + juce::String(st, 1), juce::dontSendNotification);
     }
-    else if (slider == &vibratoSlider)
+    else if (slider == &vibratoKnob)
     {
         processorRef.uiVibratoDepth.store(val, std::memory_order_relaxed);
-        vibratoLabel.setText("Vibrato: " + juce::String(val, 2) + " st", juce::dontSendNotification);
+        vibratoValue->setText(juce::String(val, 2) + "st", juce::dontSendNotification);
     }
-    else if (slider == &expressionSlider)
+    else if (slider == &expressionStrip)
     {
         processorRef.uiExpressionGain.store(val, std::memory_order_relaxed);
-        expressionLabel.setText("Expression: " + juce::String(static_cast<int>(val * 100)) + "%",
-                                juce::dontSendNotification);
+        expressionValue->setText(juce::String(static_cast<int>(val * 100)) + "%", juce::dontSendNotification);
     }
-    else if (slider == &thalamVolumeSlider)
+    else if (slider == &bodyMixKnob)
+    {
+        processorRef.uiBodyMix.store(val, std::memory_order_relaxed);
+        bodyMixValue->setText(juce::String(val, 2), juce::dontSendNotification);
+    }
+    else if (slider == &sympatheticKnob)
+    {
+        processorRef.uiSympathetic.store(val, std::memory_order_relaxed);
+        sympatheticValue->setText(juce::String(val, 2), juce::dontSendNotification);
+    }
+    else if (slider == &thalamKnob)
     {
         processorRef.uiThalamVolume.store(val, std::memory_order_relaxed);
-        thalamVolumeLabel.setText("Volume: " + juce::String(val, 2), juce::dontSendNotification);
+        thalamValue->setText(juce::String(val, 2), juce::dontSendNotification);
     }
 }
 
 void VeenaPluginEditor::sliderDragEnded(juce::Slider* slider)
 {
-    if (slider == &pitchBendSlider)
+    if (slider == &pitchBendStrip)
     {
-        // Spring back to center — but use dontSendNotification so the
-        // slider visual resets without immediately zeroing the atomic.
-        // The audio thread's PitchBendEngine smoother will glide the
-        // pitch back smoothly over ~100ms instead of snapping.
-        pitchBendSlider.setValue(0.0, juce::dontSendNotification);
+        pitchBendStrip.setValue(0.0, juce::dontSendNotification);
         processorRef.uiPitchBend.store(0.0f, std::memory_order_relaxed);
     }
 }
 
+// --- Combo box callbacks ---
+
 void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
 {
-    if (combo == &bendRangeCombo)
-    {
-        float range = static_cast<float>(bendRangeCombo.getSelectedId());
-        processorRef.uiBendRange.store(range, std::memory_order_relaxed);
-    }
+    if (combo == &bodyModeCombo)
+        processorRef.uiBodyMode.store(bodyModeCombo.getSelectedId() - 1, std::memory_order_relaxed);
+    else if (combo == &ragaCombo)
+        processorRef.uiRagaPreset.store(ragaCombo.getSelectedId() - 1, std::memory_order_relaxed);
     else if (combo == &tuningCombo)
     {
         int offset = tuningCombo.getSelectedId() - 1;
         processorRef.uiTuningOffset.store(offset, std::memory_order_relaxed);
-        int baseNote = 48 + offset;
-        keyboardComponent.setAvailableRange(baseNote, baseNote + 48);
+        keyboardComponent.setAvailableRange(48 + offset, 48 + offset + 48);
     }
+    else if (combo == &bendRangeCombo)
+        processorRef.uiBendRange.store(static_cast<float>(bendRangeCombo.getSelectedId()), std::memory_order_relaxed);
     else if (combo == &glideCurveCombo)
-    {
-        int curveId = glideCurveCombo.getSelectedId() - 1;
-        processorRef.uiGlideCurve.store(curveId, std::memory_order_relaxed);
-    }
-    else if (combo == &ragaCombo)
-    {
-        int presetIndex = ragaCombo.getSelectedId() - 1;
-        processorRef.uiRagaPreset.store(presetIndex, std::memory_order_relaxed);
-    }
-    else if (combo == &bodyModeCombo)
-    {
-        int mode = bodyModeCombo.getSelectedId() - 1;
-        processorRef.uiBodyMode.store(mode, std::memory_order_relaxed);
-    }
+        processorRef.uiGlideCurve.store(glideCurveCombo.getSelectedId() - 1, std::memory_order_relaxed);
 }
+
+// --- Key handling for thalam ---
 
 bool VeenaPluginEditor::keyPressed(const juce::KeyPress& key)
 {
-    // Map Z/X/C to thalam string MIDI notes 36/38/40.
-    // These are below the main keyboard range and are intercepted here
-    // because JUCE's MidiKeyboardComponent doesn't map Z/X/C.
     char c = static_cast<char>(key.getTextCharacter());
     int thalamIndex = -1;
 
@@ -431,26 +494,20 @@ bool VeenaPluginEditor::keyPressed(const juce::KeyPress& key)
     if (thalamIndex >= 0 && !thalamKeyState[thalamIndex])
     {
         thalamKeyState[thalamIndex] = true;
-        // Inject a MIDI noteOn into the keyboard state so the processor sees it.
-        int midiNote = 36 + thalamIndex * 2;  // 36, 38, 40
-        processorRef.keyboardState.noteOn(1, midiNote, 0.8f);
+        processorRef.keyboardState.noteOn(1, 36 + thalamIndex * 2, 0.8f);
+        visualization.setThalamFlash(thalamIndex, 1.0f);
         return true;
     }
-
-    return false;  // let MidiKeyboardComponent handle other keys
+    return false;
 }
 
 bool VeenaPluginEditor::keyStateChanged(bool /*isKeyDown*/)
 {
-    // Check if Z/X/C keys were released (keyStateChanged is called on
-    // both press and release, but doesn't tell us which key — we poll).
     const char keys[] = { 'Z', 'X', 'C' };
     const int notes[] = { 36, 38, 40 };
-
     for (int i = 0; i < 3; ++i)
     {
-        bool isDown = juce::KeyPress::isKeyCurrentlyDown(keys[i]);
-        if (thalamKeyState[i] && !isDown)
+        if (thalamKeyState[i] && !juce::KeyPress::isKeyCurrentlyDown(keys[i]))
         {
             thalamKeyState[i] = false;
             processorRef.keyboardState.noteOff(1, notes[i], 0.0f);
@@ -459,28 +516,36 @@ bool VeenaPluginEditor::keyStateChanged(bool /*isKeyDown*/)
     return false;
 }
 
+// --- Timer: update visualization and level meter ---
+
 void VeenaPluginEditor::timerCallback()
 {
-    // Update level meter with peak from audio thread.
     float peak = processorRef.peakLevel.load(std::memory_order_relaxed);
-    // Smooth decay for visual appeal.
     currentPeak = std::max(peak, currentPeak * 0.85f);
 
-    int db = (currentPeak > 0.0001f)
-        ? static_cast<int>(20.0f * std::log10(currentPeak))
-        : -60;
-    levelLabel.setText("Level: " + juce::String(db) + " dB", juce::dontSendNotification);
+    // Update visualization state from processor.
+    visualization.setPeakLevel(currentPeak);
+    visualization.setStringAmplitude(0, currentPeak);
+    visualization.setStringAmplitude(1, currentPeak * 0.5f);
 
-    // Update pitch bend label to reflect spring-back (slider resets visually
-    // on release, but we need the label to update too).
-    float bendVal = static_cast<float>(pitchBendSlider.getValue());
+    // Update pitch bend label (for spring-back visual sync).
+    float bendVal = static_cast<float>(pitchBendStrip.getValue());
     float bendSt = bendVal * processorRef.getBendRangeSemitones();
-    juce::String bendText = "Pitch Bend: ";
-    if (bendSt >= 0.0f) bendText += "+";
-    bendText += juce::String(bendSt, 1) + " st";
-    pitchBendLabel.setText(bendText, juce::dontSendNotification);
+    pitchBendValue->setText((bendSt >= 0 ? "+" : "") + juce::String(bendSt, 1), juce::dontSendNotification);
 
-    // Only repaint the meter bar area, not the entire editor.
-    auto meterArea = levelLabel.getBounds().translated(0, 18).withHeight(8).expanded(4, 4);
-    repaint(meterArea);
+    repaint(getLocalBounds().removeFromTop(theme::dim::headerHeight));
+}
+
+// --- Label factory ---
+
+juce::Label* VeenaPluginEditor::makeLabel(const juce::String& text, float fontSize,
+                                           juce::Colour col, juce::Justification just)
+{
+    auto* label = new juce::Label();
+    label->setText(text, juce::dontSendNotification);
+    label->setFont(juce::FontOptions(fontSize));
+    label->setColour(juce::Label::textColourId, col);
+    label->setJustificationType(just);
+    ownedLabels.add(label);
+    return label;
 }
