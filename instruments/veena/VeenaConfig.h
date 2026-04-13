@@ -59,6 +59,16 @@ constexpr engine::BendCurve DEFAULT_BEND_CURVE = engine::BendCurve::Linear;
 
 // --- Body resonance (kudam) ---
 
+// Body resonance mode: how the kudam body character is applied.
+enum class BodyMode : int
+{
+    ModalFilters = 0,   // Biquad filter bank (fast, parametric)
+    Convolution,        // IR convolution (more realistic, heavier CPU)
+    Hybrid              // 50/50 blend of both
+};
+
+constexpr BodyMode DEFAULT_BODY_MODE = BodyMode::Hybrid;
+
 // TODO(TUNE): dry/wet mix for body resonance.
 // 0.5 = balanced blend of raw string and body-resonated signal.
 constexpr float DEFAULT_BODY_MIX = 0.5f;

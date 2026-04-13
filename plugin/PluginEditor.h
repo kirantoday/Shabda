@@ -76,6 +76,8 @@ private:
     juce::Label glideCurveLabel;
     juce::ComboBox ragaCombo;
     juce::Label ragaLabel;
+    juce::ComboBox bodyModeCombo;
+    juce::Label bodyModeLabel;
 
     // --- Level meter ---
     juce::Label levelLabel;

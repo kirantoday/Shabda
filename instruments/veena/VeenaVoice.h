@@ -6,6 +6,7 @@
 #include "expression/VibratoLFO.h"
 #include "expression/GlideEngine.h"
 #include "resonator/BodyResonator.h"
+#include "resonator/ConvolutionBody.h"
 #include "sympathetic/SympatheticBank.h"
 #include <array>
 #include <cstdint>
@@ -65,6 +66,7 @@ public:
     void setGlideCurve(engine::GlideCurve curve);
     void setThalamVolume(float volume);
     void setRagaPreset(int presetIndex);
+    void setBodyMode(int mode);  // 0=Modal, 1=Convolution, 2=Hybrid
 
     // Thalam (side drone) string trigger — independent from main voices.
     // midiNote determines which thalam string is plucked.
@@ -100,6 +102,8 @@ private:
     engine::MidiMapper midiMapper;
     engine::VibratoLFO vibratoLFO;
     engine::BodyResonator bodyResonator;
+    engine::ConvolutionBody convolutionBody;
+    int bodyMode = 2;  // 0=Modal, 1=Convolution, 2=Hybrid (default)
     engine::SympatheticBank sympatheticBank;
 
     // --- Legato state ---

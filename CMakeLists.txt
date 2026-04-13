@@ -19,6 +19,7 @@ add_library(VeenaEngine STATIC
     engine/expression/MidiMapper.cpp
     engine/resonator/ModalFilter.cpp
     engine/resonator/BodyResonator.cpp
+    engine/resonator/ConvolutionBody.cpp
     engine/sympathetic/SympatheticBank.cpp
 )
 

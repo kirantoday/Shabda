@@ -168,6 +168,15 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     ragaCombo.addListener(this);
     addAndMakeVisible(ragaCombo);
 
+    setupValueLabel(bodyModeLabel, "Body:");
+    addAndMakeVisible(bodyModeLabel);
+    bodyModeCombo.addItem("Modal Filters", 1);
+    bodyModeCombo.addItem("Convolution", 2);
+    bodyModeCombo.addItem("Hybrid", 3);
+    bodyModeCombo.setSelectedId(3, juce::dontSendNotification);  // Hybrid default
+    bodyModeCombo.addListener(this);
+    addAndMakeVisible(bodyModeCombo);
+
     // --- Level meter label ---
     setupValueLabel(levelLabel, "Level: ----");
     addAndMakeVisible(levelLabel);
@@ -177,7 +186,7 @@ VeenaPluginEditor::VeenaPluginEditor(VeenaPluginProcessor& p)
     keyboardComponent.setAvailableRange(36, 96);
     addAndMakeVisible(keyboardComponent);
 
-    setSize(780, 600);
+    setSize(780, 630);
     setWantsKeyboardFocus(true);
 
     // Start timer for level meter updates (30 fps).
@@ -299,6 +308,11 @@ void VeenaPluginEditor::resized()
     ragaCombo.setBounds(settingsRow3.removeFromLeft(150));
 
     rightCol.removeFromTop(4);
+    auto settingsRow4 = rightCol.removeFromTop(24);
+    bodyModeLabel.setBounds(settingsRow4.removeFromLeft(40));
+    bodyModeCombo.setBounds(settingsRow4.removeFromLeft(120));
+
+    rightCol.removeFromTop(4);
     levelLabel.setBounds(rightCol.removeFromTop(16));
 }
 
@@ -394,6 +408,11 @@ void VeenaPluginEditor::comboBoxChanged(juce::ComboBox* combo)
     {
         int presetIndex = ragaCombo.getSelectedId() - 1;
         processorRef.uiRagaPreset.store(presetIndex, std::memory_order_relaxed);
+    }
+    else if (combo == &bodyModeCombo)
+    {
+        int mode = bodyModeCombo.getSelectedId() - 1;
+        processorRef.uiBodyMode.store(mode, std::memory_order_relaxed);
     }
 }
 

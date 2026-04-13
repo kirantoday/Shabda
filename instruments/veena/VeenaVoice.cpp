@@ -39,6 +39,10 @@ void VeenaVoice::prepare(float newSampleRate, int maxBlockSize)
     bodyResonator.setPreset(VEENA_BODY_MODES, VEENA_BODY_NUM_MODES);
     bodyResonator.setDryWetMix(DEFAULT_BODY_MIX);
 
+    convolutionBody.prepare(sampleRate, maxBlockSize);
+    convolutionBody.setDryWetMix(DEFAULT_BODY_MIX);
+    bodyMode = static_cast<int>(DEFAULT_BODY_MODE);
+
     sympatheticBank.prepare(sampleRate, maxBlockSize);
     sympatheticBank.setTunings(THALAM_STRING_NOTES, NUM_THALAM_STRINGS);
     sympatheticBank.setGain(DEFAULT_SYMPATHETIC_GAIN);
@@ -80,6 +84,7 @@ void VeenaVoice::reset()
     midiMapper.reset();
     vibratoLFO.reset();
     bodyResonator.reset();
+    convolutionBody.reset();
     sympatheticBank.reset();
     lastMidiNote = -1;
     lastVoiceIndex = -1;
@@ -257,8 +262,40 @@ void VeenaVoice::processBlock(float* outputBuffer, int numSamples)
         ++sampleCounter;
     }
 
-    // Shared post-processing: body resonance and sympathetic drones.
-    bodyResonator.processBlock(outputBuffer, numSamples);
+    // Shared post-processing: body resonance.
+    if (bodyMode == 0)
+    {
+        // Modal filters only.
+        bodyResonator.processBlock(outputBuffer, numSamples);
+    }
+    else if (bodyMode == 1)
+    {
+        // Convolution only.
+        convolutionBody.processBlock(outputBuffer, numSamples);
+    }
+    else
+    {
+        // Hybrid: process a copy through each, blend 50/50.
+        // Use a stack buffer for the convolution path to avoid allocation.
+        // For large block sizes, fall back to modal-only (safety).
+        if (numSamples <= 2048)
+        {
+            float convBuf[2048];
+            std::copy(outputBuffer, outputBuffer + numSamples, convBuf);
+
+            bodyResonator.processBlock(outputBuffer, numSamples);
+            convolutionBody.processBlock(convBuf, numSamples);
+
+            for (int i = 0; i < numSamples; ++i)
+                outputBuffer[i] = 0.5f * outputBuffer[i] + 0.5f * convBuf[i];
+        }
+        else
+        {
+            bodyResonator.processBlock(outputBuffer, numSamples);
+        }
+    }
+
+    // Sympathetic resonance: shimmering drone halo.
     sympatheticBank.processBlock(outputBuffer, numSamples);
 }
 
@@ -301,6 +338,12 @@ float VeenaVoice::getBendRange() const
 void VeenaVoice::setBodyMix(float mix)
 {
     bodyResonator.setDryWetMix(mix);
+    convolutionBody.setDryWetMix(mix);
+}
+
+void VeenaVoice::setBodyMode(int mode)
+{
+    bodyMode = std::clamp(mode, 0, 2);
 }
 
 void VeenaVoice::setSympatheticGain(float gain)

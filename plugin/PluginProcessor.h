@@ -62,6 +62,7 @@ public:
     std::atomic<bool>  uiLegatoEnabled { true };     // legato glide on/off
     std::atomic<int>   uiGlideCurve { 1 };           // 0=Linear, 1=Exponential, 2=SCurve, 3=Late
     std::atomic<int>   uiRagaPreset { 0 };           // index into RAGA_PRESETS (0=Free)
+    std::atomic<int>   uiBodyMode { 2 };             // 0=Modal, 1=Convolution, 2=Hybrid
 
     // Peak level for the meter (written by audio thread, read by editor)
     std::atomic<float> peakLevel { 0.0f };
