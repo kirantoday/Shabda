@@ -163,4 +163,21 @@ constexpr engine::GlideCurve DEFAULT_GLIDE_CURVE = engine::GlideCurve::Exponenti
 // EXTENSION: increase to 4 for full main string polyphony.
 constexpr int MAX_VOICES = 2;
 
+// --- Humanization ---
+// Micro-variations applied on each note trigger to break up the
+// mechanical "perfect" quality of synthesized notes. A real player
+// never plucks with exactly the same timing, pitch, or brightness.
+
+// TODO(TUNE): pitch jitter range in cents (100 cents = 1 semitone).
+// ±3 cents is barely perceptible but adds life.
+constexpr float HUMANIZE_PITCH_CENTS = 3.0f;
+
+// TODO(TUNE): brightness jitter as a fraction of the base brightness.
+// ±10% variation in excitation brightness per pluck.
+constexpr float HUMANIZE_BRIGHTNESS_FRACTION = 0.10f;
+
+// TODO(TUNE): timing jitter range in ms.
+// ±5ms shifts when the pluck actually fires. Adds groove.
+constexpr float HUMANIZE_TIMING_MS = 5.0f;
+
 } // namespace veena

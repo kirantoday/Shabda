@@ -110,8 +110,35 @@ void VeenaVoice::noteOn(int midiNote, float velocity)
         voice.midiNote = midiNote;
         voice.noteOnSample = sampleCounter;
 
+        // Humanization: apply micro-variations on retrigger.
+        if (humanizeEnabled)
+        {
+            // Pitch jitter: ±3 cents (converted to semitones: cents/100)
+            voice.pitchJitterCents = nextRandom() * HUMANIZE_PITCH_CENTS / 100.0f;
+
+            // Brightness jitter: ±10% of base brightness
+            float brightnessJitter = 1.0f + nextRandom() * HUMANIZE_BRIGHTNESS_FRACTION;
+            voice.string.setBrightness(baseBrightness * brightnessJitter);
+
+            // Timing jitter: 0 to HUMANIZE_TIMING_MS delay before pluck fires.
+            // Unipolar (only delay, never early) to avoid negative latency.
+            int maxJitterSamples = static_cast<int>(sampleRate * HUMANIZE_TIMING_MS / 1000.0f);
+            voice.jitterSamplesRemaining = static_cast<int>(nextRandomUnipolar() * static_cast<float>(maxJitterSamples));
+            voice.pendingMidiNote = midiNote;
+            voice.pendingVelocity = velocity;
+        }
+        else
+        {
+            voice.pitchJitterCents = 0.0f;
+            voice.jitterSamplesRemaining = 0;
+        }
+
         pitchBendEngine.snapToCurrentValue();
-        voice.string.noteOn(midiNote, velocity);
+
+        // If no timing jitter, pluck immediately. Otherwise processBlock
+        // will fire the pluck when the jitter countdown reaches 0.
+        if (voice.jitterSamplesRemaining == 0)
+            voice.string.noteOn(midiNote, velocity);
 
         lastMidiNote = midiNote;
         lastVoiceIndex = vi;
@@ -182,13 +209,22 @@ void VeenaVoice::processBlock(float* outputBuffer, int numSamples)
         {
             auto& voice = voices[static_cast<size_t>(v)];
 
+            // Handle deferred pluck (humanization timing jitter).
+            // The pluck fires when the jitter countdown reaches 0.
+            if (voice.jitterSamplesRemaining > 0)
+            {
+                --voice.jitterSamplesRemaining;
+                if (voice.jitterSamplesRemaining == 0)
+                    voice.string.noteOn(voice.pendingMidiNote, voice.pendingVelocity);
+            }
+
             if (!voice.string.isActive())
                 continue;
 
-            // Per-voice glide + shared pitch bend + vibrato
+            // Per-voice glide + shared pitch bend + vibrato + humanization pitch jitter
             float glideNote = voice.glideEngine.getNextNote();
             float glideOffset = glideNote - voice.excitedBaseNote;
-            float totalPitch = glideOffset + pitchBendOffset + vibratoOffset;
+            float totalPitch = glideOffset + pitchBendOffset + vibratoOffset + voice.pitchJitterCents;
 
             voice.string.setPitchOffset(totalPitch);
             voice.string.setBrightness(modulatedBrightness);
@@ -309,6 +345,23 @@ int VeenaVoice::findVoiceForNote(int midiNote) const
             return i;
     }
     return -1;
+}
+
+// --- PRNG (xorshift32, no stdlib) ---
+
+float VeenaVoice::nextRandom()
+{
+    // Returns -1..+1
+    rngState ^= rngState << 13;
+    rngState ^= rngState >> 17;
+    rngState ^= rngState << 5;
+    return static_cast<float>(rngState) / 2147483648.0f - 1.0f;
+}
+
+float VeenaVoice::nextRandomUnipolar()
+{
+    // Returns 0..+1
+    return (nextRandom() + 1.0f) * 0.5f;
 }
 
 } // namespace veena

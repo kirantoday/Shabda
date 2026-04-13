@@ -73,6 +73,13 @@ private:
         float excitedBaseNote = 60.0f;  // note the string was plucked at
         int midiNote = -1;              // currently assigned MIDI note (-1 = free)
         int64_t noteOnSample = 0;       // when this voice was triggered
+
+        // Humanization: deferred trigger for timing jitter.
+        // When jitterSamplesRemaining > 0, the pluck hasn't fired yet.
+        int jitterSamplesRemaining = 0;
+        int pendingMidiNote = -1;
+        float pendingVelocity = 0.0f;
+        float pitchJitterCents = 0.0f;  // micro pitch offset applied per-sample
     };
 
     static constexpr int NUM_VOICES = 2;  // matches VeenaConfig::MAX_VOICES
@@ -98,6 +105,12 @@ private:
     float outputGain = 0.7f;
     float baseBrightness = 0.65f;
     float aftertouchBrightnessRange = 0.3f;
+    bool humanizeEnabled = true;
+
+    // Fast xorshift32 PRNG — no stdlib, deterministic, good enough for jitter.
+    uint32_t rngState = 987654321u;
+    float nextRandom();         // returns -1..+1
+    float nextRandomUnipolar(); // returns 0..+1
 
     // Voice allocation helpers
     int findFreeVoice() const;
